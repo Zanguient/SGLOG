@@ -1,0 +1,12 @@
+inherited F_TemplateConsulta1: TF_TemplateConsulta1
+  Caption = 'F_TemplateConsulta1'
+  PixelsPerInch = 96
+  TextHeight = 13
+  inherited RzSplitterTemplate: TRzSplitter
+    UpperLeftControls = (
+      pnOpcoes
+      pnSeparador)
+    LowerRightControls = (
+      pnComponentes)
+  end
+end

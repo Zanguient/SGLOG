@@ -1,0 +1,157 @@
+inherited F_PerfilPermissao: TF_PerfilPermissao
+  Caption = 'F_PerfilPermissao'
+  ClientHeight = 435
+  ClientWidth = 761
+  ExplicitWidth = 777
+  ExplicitHeight = 473
+  PixelsPerInch = 96
+  TextHeight = 13
+  inherited RzSplitterTemplate: TRzSplitter
+    Width = 761
+    Height = 435
+    Percent = 10
+    UpperLeftControls = (
+      pnOpcoes
+      pnSeparador)
+    LowerRightControls = (
+      pnComponentes)
+    inherited pnOpcoes: TPanel
+      Height = 435
+      inherited RzBitBtnSair: TRzBitBtn
+        Top = 405
+      end
+    end
+    inherited pnSeparador: TPanel
+      Height = 435
+    end
+    inherited pnComponentes: TPanel
+      Width = 672
+      Height = 435
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      object cxGrid1: TcxGrid
+        Left = 0
+        Top = 41
+        Width = 672
+        Height = 394
+        Align = alClient
+        TabOrder = 0
+        ExplicitLeft = -4
+        ExplicitTop = 42
+        ExplicitWidth = 581
+        ExplicitHeight = 373
+        object cxGrid1DBTableView1: TcxGridDBTableView
+          DataController.Summary.DefaultGroupSummaryItems = <>
+          DataController.Summary.FooterSummaryItems = <>
+          DataController.Summary.SummaryGroups = <>
+        end
+        object cxGrid1DBBandedTableView1: TcxGridDBBandedTableView
+          DataController.Summary.DefaultGroupSummaryItems = <>
+          DataController.Summary.FooterSummaryItems = <>
+          DataController.Summary.SummaryGroups = <>
+          Styles.StyleSheet = DM.GridBandedTableViewStyleSheetUserFormat4
+          Bands = <
+            item
+              Caption = #193'rvore Acesso'
+              Width = 217
+            end
+            item
+              Caption = 'Permiss'#245'es'
+              Width = 253
+            end>
+        end
+        object cxGrid1Level2: TcxGridLevel
+          GridView = cxGrid1DBBandedTableView1
+        end
+      end
+      object Panel1: TPanel
+        Left = 0
+        Top = 0
+        Width = 672
+        Height = 41
+        Align = alTop
+        BevelOuter = bvNone
+        TabOrder = 1
+        ExplicitLeft = 144
+        ExplicitTop = 48
+        ExplicitWidth = 185
+        object btnPesquisa_Perfil: TSpeedButton
+          Left = 433
+          Top = 19
+          Width = 25
+          Height = 22
+          Hint = 'Pesquisar perfis de usu'#225'rio  (F9)'
+          Glyph.Data = {
+            36040000424D3604000000000000360000002800000010000000100000000100
+            2000000000000004000000000000000000000000000000000000FF00FF00CCCC
+            CC00C0C0C000E5E5E500FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00CCCCCC006699
+            99006666990099999900E5E5E500FF00FF00FF00FF00FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF0066CC
+            FF003399CC006666990099999900E5E5E500FF00FF00FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00CCCC
+            FF0066CCFF003399CC006666990099999900E5E5E500FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+            FF00CCCCFF0066CCFF003399CC006666990099999900E5E5E500FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00
+            FF00FF00FF00CCCCFF0066CCFF003399CC0066669900CCCCCC00FFCCCC00CC99
+            9900CC999900CC999900CCCC9900E5E5E500FF00FF00FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00CCCCFF0066CCFF00B2B2B200CC999900CCCC9900F2EA
+            BF00FFFFCC00F2EABF00F2EABF00CC999900ECC6D900FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00E5E5E500CC999900FFCC9900FFFFCC00FFFF
+            CC00FFFFCC00FFFFFF00FFFFFF00FFFFFF00CC999900E5E5E500FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FFCCCC00CCCC9900FFFFCC00F2EABF00FFFF
+            CC00FFFFCC00FFFFFF00FFFFFF00FFFFFF00F2EABF00CCCC9900FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00CCCC9900FFCC9900F2EABF00F2EABF00FFFF
+            CC00FFFFCC00FFFFCC00FFFFFF00FFFFFF00F2EABF00CC999900FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00CC999900F2EABF00F2EABF00F2EABF00F2EA
+            BF00FFFFCC00FFFFCC00FFFFCC00FFFFCC00FFFFCC00CC999900FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00CCCC9900F2EABF00FFFFCC00F2EABF00F2EA
+            BF00F2EABF00FFFFCC00FFFFCC00FFFFCC00F2EABF00CC999900FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FFCCCC00CCCC9900FFFFFF00FFFFFF00F2EA
+            BF00F2EABF00F2EABF00F2EABF00FFFFCC00CCCC9900CCCC9900FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00E5E5E500CC999900ECC6D900FFFFFF00FFFF
+            CC00F2EABF00F2EABF00F2EABF00FFCC9900CC999900E5E5E500FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FFCCCC00CC999900FFCCCC00F2EA
+            BF00F2EABF00F2EABF00CCCC9900CC999900FFCCCC00FF00FF00FF00FF00FF00
+            FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00E5E5E500CCCC9900CC99
+            9900CC999900CC999900CC999900E5E5E500FF00FF00FF00FF00}
+        end
+        object Label3: TLabel
+          Left = 30
+          Top = 23
+          Width = 50
+          Height = 13
+          Alignment = taRightJustify
+          Caption = 'C'#243'd. Perfil'
+          FocusControl = edtCod_perfil
+        end
+        object edtCod_perfil: TwwDBEdit
+          Left = 86
+          Top = 20
+          Width = 55
+          Height = 21
+          Hint = 'Aperte F9 para pesquisar o perfis'
+          DataField = 'COD_PERFIL'
+          TabOrder = 0
+          UnboundDataType = wwDefault
+          WantReturns = False
+          WordWrap = False
+        end
+        object edtNome_perfil: TwwDBEdit
+          Left = 145
+          Top = 20
+          Width = 282
+          Height = 21
+          TabStop = False
+          DataField = 'DESCRICAO'
+          Enabled = False
+          TabOrder = 1
+          UnboundDataType = wwDefault
+          WantReturns = False
+          WordWrap = False
+        end
+      end
+    end
+  end
+end

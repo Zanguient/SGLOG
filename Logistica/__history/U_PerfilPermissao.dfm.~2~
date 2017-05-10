@@ -1,0 +1,12 @@
+inherited F_PerfilPermissao: TF_PerfilPermissao
+  Caption = 'F_PerfilPermissao'
+  PixelsPerInch = 96
+  TextHeight = 13
+  inherited RzSplitterTemplate: TRzSplitter
+    UpperLeftControls = (
+      pnOpcoes
+      pnSeparador)
+    LowerRightControls = (
+      pnComponentes)
+  end
+end

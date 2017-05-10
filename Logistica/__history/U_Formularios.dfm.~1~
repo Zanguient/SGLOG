@@ -1,0 +1,12 @@
+inherited F_TemplateProcesso1: TF_TemplateProcesso1
+  Caption = 'F_TemplateProcesso1'
+  PixelsPerInch = 96
+  TextHeight = 13
+  inherited RzSplitterTemplate: TRzSplitter
+    UpperLeftControls = (
+      pnOpcoes
+      pnSeparador)
+    LowerRightControls = (
+      pnComponentes)
+  end
+end

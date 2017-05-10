@@ -1,0 +1,853 @@
+unit U_BalaoMensagemEquipamento;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, RzPanel, RzSplit, RzLabel, RzButton,
+  Menus, DB, MemDS, DBAccess, Ora, pngimage, dxGDIPlusClasses, Vcl.ComCtrls, RichEdit,
+  RzTabs;
+  procedure JustificarRichEdit(RichEdit :TRichEdit; AllText :Boolean);
+
+type
+  TInformacaoBalao = class
+    Cod_Equipamento : Integer;
+    Equipamento : String;
+    Saida_Industria : String;
+    Chegada_Lavoura : String;
+    Saida_Lavoura : String;
+    Chegada_Industria : String;
+    Alarmes : TStringList;
+    Alertas : TStringList;
+    RealPrevisto : String;
+    TipoImagem : Integer;
+    Parado : String;
+    TipoHint : String; //V - Veiculo E - Equipamento
+    Observacoes : TStringList;
+    cod_frente : Integer;
+    cod_fazenda : Integer;
+end;
+
+type
+  TF_BalaoMensagemEquipamento = class(TForm)
+    PopupStatusVeiculo: TPopupMenu;
+    Indo1: TMenuItem;
+    Carregando1: TMenuItem;
+    Voltando1: TMenuItem;
+    VoltarStatusInicial1: TMenuItem;
+    PR_ATUALIZA_STATUS_VEICULO: TOraStoredProc;
+    PageInformacoes: TRzPageControl;
+    TabVeiculos: TRzTabSheet;
+    RzSplitter1: TRzSplitter;
+    ScrollBoxVeiculos: TScrollBox;
+    imgTransparente: TImage;
+    imgTransparenteMarcado: TImage;
+    imgSelecionadoMarcado: TImage;
+    pnVeiculos: TPanel;
+    imgSelecionado: TImage;
+    Panel4: TPanel;
+    ScrollBox1: TScrollBox;
+    Panel1: TPanel;
+    Image3: TImage;
+    memoAlarmes: TMemo;
+    memoAlertas: TMemo;
+    RzPanel1: TRzPanel;
+    Label3: TLabel;
+    Label4: TLabel;
+    lbSaidaIndustria: TLabel;
+    lbChegadaLavoura: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    lbSaidaLavoura: TLabel;
+    lbChegadaIndustria: TLabel;
+    RzMenuButton1: TRzMenuButton;
+    RzBitBtn1: TRzBitBtn;
+    RzPanel2: TRzPanel;
+    RzPanel3: TRzPanel;
+    RzPanel4: TRzPanel;
+    pnEquipamento: TRzPanel;
+    RichEditAlertas: TRichEdit;
+    TabEquipamentos: TRzTabSheet;
+    Panel2: TPanel;
+    Image1: TImage;
+    RzPanel5: TRzPanel;
+    Label1: TLabel;
+    LBEquipamento: TLabel;
+    RzBitBtn2: TRzBitBtn;
+    RzPanel6: TRzPanel;
+    RzPanel8: TRzPanel;
+    RichEditObservacao: TRichEdit;
+    procedure VoltarStatusInicial1Click(Sender: TObject);
+    procedure Voltando1Click(Sender: TObject);
+    procedure Carregando1Click(Sender: TObject);
+    procedure Indo1Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure onClickIMGVeiculo(Sender: TObject);
+    procedure atualizaInformacoesTela(informacoesEquipamento: TInformacaoBalao);
+    procedure RzBitBtn1Click(Sender: TObject);
+    procedure PopupStatusVeiculoPopup(Sender: TObject);
+    procedure RzBitBtn2Click(Sender: TObject);
+  private
+    { Private declarations }
+    vCod_frente, vCod_Fazenda : Integer;
+  public
+    { Public declarations }
+    lbCaption : TRzLabel;
+    v_parado : String;
+    listComponentsVeiculos : TList;
+    procedure Ativar(Sender : TObject; Ponto : TPoint; Informacao : TInformacaoBalao; listaEquipamentos: array of TInformacaoBalao);
+    procedure Desativar;
+  end;
+
+
+var
+  F_BalaoMensagemEquipamento: TF_BalaoMensagemEquipamento;
+implementation
+
+uses U_Monitoramento_Trafego_Estatico, U_DM, U_ParadaReboqueCarreg, u_recursos,
+  U_DisponibilidadesFrentes;
+
+{$R *.dfm}
+
+{ TF_BalaoMensagemEquipamento }
+
+
+procedure JustificarRichEdit(RichEdit :TRichEdit; AllText :Boolean);
+const
+   TO_ADVANCEDTYPOGRAPHY = $1;
+   EM_SETTYPOGRAPHYOPTIONS = (WM_USER + 202);
+   EM_GETTYPOGRAPHYOPTIONS = (WM_USER + 203);
+var
+   ParaFormat :TParaFormat;
+   SelStart,SelLength :Integer;
+begin
+     ParaFormat.cbSize := SizeOf(ParaFormat);
+     if SendMessage(RichEdit.handle,EM_SETTYPOGRAPHYOPTIONS,
+     TO_ADVANCEDTYPOGRAPHY,TO_ADVANCEDTYPOGRAPHY) = 1 then
+     begin
+           SelStart := RichEdit.SelStart;
+           SelLength := RichEdit.SelLength;
+           if AllText then
+             RichEdit.SelectAll;
+           ParaFormat.dwMask := PFM_ALIGNMENT;
+           ParaFormat.wAlignment := PFA_JUSTIFY;
+           SendMessage(RichEdit.handle, EM_SETPARAFORMAT, 0, LongInt(@ParaFormat));
+           RichEdit.SelStart := SelStart;
+           RichEdit.SelLength := SelLength;
+    end;
+end;
+
+
+procedure TF_BalaoMensagemEquipamento.Ativar(Sender: TObject; Ponto: TPoint;
+  Informacao: TInformacaoBalao; listaEquipamentos: array of TInformacaoBalao);
+var
+  i : Integer;
+  TVeiculoIMG : TImageVeiculoPista;
+begin
+  if (Ponto.X+Width > Screen.Width) then
+    Left := Ponto.X - Width
+  else
+    Left := Ponto.X;
+
+  if (Ponto.Y+Height > Screen.Height) then
+    Top := Ponto.Y - Height
+  else
+    Top := Ponto.Y;
+
+  listComponentsVeiculos.Clear;
+
+  if length(listaEquipamentos) > 1 then
+  begin
+     F_BalaoMensagemEquipamento.Height := 290;
+     F_BalaoMensagemEquipamento.Width  := 384;
+     RzSplitter1.Percent     := 17;
+  end
+  else
+  begin
+    F_BalaoMensagemEquipamento.Height := 250;
+    F_BalaoMensagemEquipamento.Width  := 384;
+    RzSplitter1.Percent     := 0;
+  end;
+
+  if Informacao.TipoHint = '' then
+     Informacao.TipoHint := 'V';
+
+  if Informacao.TipoHint = 'V' then
+  begin
+    for I := 0 to length(listaEquipamentos) - 1 do
+    begin
+      //Cria os veiculos
+      TVeiculoIMG              := TImageVeiculoPista.Create(Self);
+      TVeiculoIMG.Name         := 'LISTAVEICULOPNG'+IntToStr(listaEquipamentos[i].Cod_Equipamento);
+      TVeiculoIMG.Parent       :=  pnVeiculos;
+      TVeiculoIMG.Cursor       := crHandPoint;
+      TVeiculoIMG.Height       := 24;
+      TVeiculoIMG.Width        := 32;
+      TVeiculoIMG.Left         := 3;
+      TVeiculoIMG.ShowHint     := False;
+      TVeiculoIMG.Enabled      := True;
+      TVeiculoIMG.Visible      := True;
+      //cria o caption para inserir o código do equipamento
+      lbCaption                := TRzLabel.Create(Self);
+      lbCaption.Parent         := pnVeiculos;
+      lbCaption.Name           := 'LabelCaption'+IntToStr(i);
+      lbCaption.Caption        := IntToStr(listaEquipamentos[i].Cod_Equipamento);
+      lbCaption.Height         := 13;
+      lbCaption.Font.Style     := [fsBold];
+
+      v_parado := Informacao.Parado;
+
+      SetLength(TVeiculoIMG.listaInformacaoBalao,Length(listaEquipamentos));
+      TVeiculoIMG.informacaoBalao := listaEquipamentos[i];
+      if i = 0 then
+        begin
+          TVeiculoIMG.Top         := 6;
+          TVeiculoIMG.Left        := 3;
+          lbCaption.Top           := TVeiculoIMG.Height + 8;
+          //Se o veiculo estiver localizado
+          if TVeiculoIMG.informacaoBalao.TipoImagem = 1 then
+            TVeiculoIMG.Picture  := imgSelecionadoMarcado.Picture
+          else
+            TVeiculoIMG.Picture  := imgSelecionado.Picture;
+          atualizaInformacoesTela(TVeiculoIMG.informacaoBalao);
+        end
+      else
+        begin
+          TVeiculoIMG.Top         := 6;// + (TVeiculoIMG.Height * i) + ((lbCaption.Height+2)*(i));
+          TVeiculoIMG.Left        := ((TVeiculoIMG.Width+10)*i);
+          lbCaption.Top           := 8 + (TVeiculoIMG.Height);// + ((lbCaption.Height+2)*(i+1)) +18;
+          lbCaption.Left          := ((TVeiculoIMG.Width+10)*i);
+          //Se o veiculo estiver localizado
+          if TVeiculoIMG.informacaoBalao.TipoImagem = 1 then
+            TVeiculoIMG.Picture  := imgTransparenteMarcado.Picture
+          else
+            TVeiculoIMG.Picture  := imgTransparente.Picture;
+        end;
+      TVeiculoIMG.OnClick         := onClickIMGVeiculo;
+      listComponentsVeiculos.Add(TVeiculoIMG);
+    end;
+    PageInformacoes.ActivePage := TabVeiculos;
+  end
+  else
+  //Equipamentos
+  begin
+    RzBitBtn2.Visible := not (Informacao.Parado = 'F');
+
+    if Informacao.Parado = 'S' then
+    begin
+      RzBitBtn2.Images := dm.cxImageList16x16;
+      RzBitBtn2.Caption := 'Colocar em operação';
+    end
+    else
+    begin
+      RzBitBtn2.Images := nil;
+      RzBitBtn2.Caption := 'Colocar em Parada';
+    end;
+
+    vcod_frente  := Informacao.cod_frente;
+    vcod_fazenda := Informacao.cod_fazenda;
+    F_BalaoMensagemEquipamento.Width  := 340;
+    F_BalaoMensagemEquipamento.Height := 180;
+    RichEditObservacao.Text           := Informacao.Observacoes.Text;
+    JustificarRichEdit(RichEditObservacao,True);
+    LBEquipamento.Caption             := informacao.Equipamento;
+    PageInformacoes.ActivePage        := TabEquipamentos;
+  end;
+
+  Show;
+end;
+
+procedure TF_BalaoMensagemEquipamento.atualizaInformacoesTela(
+  informacoesEquipamento: TInformacaoBalao);
+begin
+  pnEquipamento.Caption      := informacoesEquipamento.Equipamento;
+  lbSaidaIndustria.Caption   := informacoesEquipamento.Saida_Industria;
+  lbChegadaLavoura.Caption   := informacoesEquipamento.Chegada_Lavoura;
+  lbSaidaLavoura.Caption     := informacoesEquipamento.Saida_Lavoura;
+  lbChegadaIndustria.Caption := informacoesEquipamento.Chegada_Industria;
+
+  if informacoesEquipamento.Parado = 'S' then
+  begin
+    RzBitBtn1.Images := dm.cxImageList16x16;
+    RzBitBtn1.Hint := 'Colocar em operação';
+    RzBitBtn1.ShowHint := True;
+  end
+  else
+  begin
+    RzBitBtn1.Images := nil;
+    RzBitBtn1.Hint := 'Colocar em parada';
+    RzBitBtn1.ShowHint := True;
+  end;
+
+//  lbRealPrevisto.Caption     := informacoesEquipamento.RealPrevisto;
+  if informacoesEquipamento.RealPrevisto = 'Posição Real' then
+    RzMenuButton1.Visible := False
+  else
+  begin
+    if Application.Title = 'Logística Transporte Cana' then
+       RzMenuButton1.Visible := True
+    else
+      RzMenuButton1.Visible := False;
+  end;
+  memoAlarmes.Lines.Text     := informacoesEquipamento.Alarmes.Text;
+//  memoAlertas.Lines.Text     := informacoesEquipamento.Alertas.Text;
+  RichEditAlertas.Lines.Text := informacoesEquipamento.Alertas.Text;
+  JustificarRichEdit(RichEditAlertas,True);
+end;
+
+procedure TF_BalaoMensagemEquipamento.Carregando1Click(Sender: TObject);
+var codigoVeiculo, Perc_trajeto : String;
+    Veiculo : Double;
+    Posicao : Integer;
+begin
+  codigoVeiculo := pnequipamento.caption;
+  Posicao := Pos(' ',CodigoVeiculo);
+  if Posicao = 0 then
+    begin
+      Application.MessageBox('Não existe alocação para esse equipamento','Alocação não encontrada.',MB_ICONERROR + MB_OK);
+      Abort;
+    end
+  else
+  begin
+    Veiculo := StrToInt(Copy(CodigoVeiculo,1,Posicao - 1));
+  end;
+  if Application.MessageBox(Pchar('Deseja mudar a posição do equipamento ' + FloatToStr(Veiculo)+'?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDYES then
+  begin
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_COD_EQUIPAMENTO').AsFloat := Veiculo;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_STATUS').AsString := 'C';
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_KM_TRAJETO').AsString := '50';
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_GRUPO').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_REGIONAL').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_UNIDADE').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.Execute;
+  end;
+end;
+
+procedure TF_BalaoMensagemEquipamento.Desativar;
+var
+  i : Integer;
+  LabelCaption : Tcomponent;
+begin
+   for I := 0 to listComponentsVeiculos.Count - 1 do
+  begin
+    //Destrói os veiculos
+    TImageVeiculoPista(listComponentsVeiculos[i]).Free;
+    //Destrói os Captions
+    LabelCaption := FindComponent('LabelCaption'+IntToStr(i));
+    LabelCaption.Free;
+  end;
+
+  listComponentsVeiculos.Clear;
+
+  Close;
+end;
+
+procedure TF_BalaoMensagemEquipamento.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  if Tag = 1 then
+    Action := caFree;
+end;
+
+procedure TF_BalaoMensagemEquipamento.FormCreate(Sender: TObject);
+begin
+  listComponentsVeiculos := TList.Create;
+  TabEquipamentos.TabVisible := False;
+  TabVeiculos.TabVisible := False;
+end;
+
+procedure TF_BalaoMensagemEquipamento.Indo1Click(Sender: TObject);
+var codigoVeiculo, Perc_trajeto : String;
+    Veiculo : Double;
+    Posicao : Integer;
+begin
+  codigoVeiculo := pnequipamento.caption;
+  Posicao := Pos(' ',CodigoVeiculo);
+  if Posicao = 0 then
+    begin
+      Application.MessageBox('Não existe alocação para esse equipamento','Alocação não encontrada.',MB_ICONERROR + MB_OK);
+      Abort;
+    end
+  else
+  begin
+    Veiculo := StrToInt(Copy(CodigoVeiculo,1,Posicao - 1));
+  end;
+  if Application.MessageBox(Pchar('Deseja mudar a posição do equipamento ' + FloatToStr(Veiculo)+'?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDYES then
+  begin
+     Perc_trajeto := InputBox('Informação','Informe o quilômetro em que se encontra o equipamento.:','');
+     if Perc_trajeto = '' then
+     begin
+       Application.MessageBox('Percentual do trajeto não pode ser vazio.','Aviso',MB_OK+MB_ICONINFORMATION);
+       Abort;
+     end;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_COD_EQUIPAMENTO').AsFloat := Veiculo;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_STATUS').AsString := 'I';
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_KM_TRAJETO').AsString := Perc_trajeto;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_GRUPO').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_REGIONAL').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_UNIDADE').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.Execute;
+  end;
+end;
+
+procedure TF_BalaoMensagemEquipamento.onClickIMGVeiculo(Sender: TObject);
+var
+  i : Integer;
+begin
+  //Varre todos os botões dos equipamentos e aplica o padrão "desativado"
+  for I := 0 to listComponentsVeiculos.Count - 1 do
+  begin
+   //Se o veiculo estiver localizado
+   if  TImageVeiculoPista(listComponentsVeiculos.Items[i]).informacaoBalao.TipoImagem = 1 then
+    TImageVeiculoPista(listComponentsVeiculos.Items[i]).Picture  := imgTransparenteMarcado.Picture
+   else
+    TImageVeiculoPista(listComponentsVeiculos.Items[i]).Picture  := imgTransparente.Picture;
+  end;
+
+  //Atualiza as informações da tela
+  atualizaInformacoesTela(TImageVeiculoPista(Sender).informacaoBalao);
+  v_parado := TImageVeiculoPista(Sender).informacaoBalao.Parado;
+
+  //Destaca o botão do equipamento clicado
+
+  //Se o veiculo estiver localizado
+  if TImageVeiculoPista(Sender).informacaoBalao.TipoImagem = 1 then
+     TImageVeiculoPista(Sender).Picture  := imgSelecionadoMarcado.Picture
+  else
+    TImageVeiculoPista(Sender).Picture  := imgSelecionado.Picture;
+
+
+end;
+
+procedure TF_BalaoMensagemEquipamento.PopupStatusVeiculoPopup(Sender: TObject);
+begin
+   if not Verificar_Permissao_Alocar then
+   begin
+     Application.MessageBox('Usuário não tem permissão para alterar alocações.','Atenção',MB_ICONERROR+MB_OK);
+     Abort;
+   end;
+end;
+
+procedure TF_BalaoMensagemEquipamento.RzBitBtn1Click(Sender: TObject);
+var codigoVeiculo, Perc_trajeto : String;
+    Veiculo : Double;
+    Posicao : Integer;
+    Local, Observacao, OrdemServico : String;
+    Motivo : Integer;
+begin
+
+   if not Verificar_Permissao_Alocar then
+   begin
+     Application.MessageBox('Usuário não tem permissão para alterar alocações.','Atenção',MB_ICONERROR+MB_OK);
+     Abort;
+   end;
+
+  codigoVeiculo := pnequipamento.caption;
+  Posicao := Pos(' ',CodigoVeiculo);
+  if Posicao = 0 then
+    begin
+      Application.MessageBox('Não existe alocação para esse equipamento.','Alocação não encontrada.',MB_ICONERROR + MB_OK);
+      Abort;
+    end
+  else
+  begin
+    Veiculo := StrToInt(Copy(CodigoVeiculo,1,Posicao - 1));
+  end;
+
+ if v_parado = 'N' then
+ begin
+    if Application.MessageBox(PChar('Deseja colocar o equipamento '+FloatToStr(veiculo)+' em parada?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDNO then
+          Abort;
+
+
+     Local := 'C';
+     Motivo := 1;
+     Observacao := '';
+     OrdemServico := '';
+
+     F_ParadaReboqueCarreg := TF_ParadaReboqueCarreg.Create(Self);
+
+     if F_ParadaReboqueCarreg.Escolha(Local, OrdemServico, Observacao, Motivo) = 'S' then
+     begin
+        with TOraQuery.Create(Self)do
+        begin
+          Session := dm.Sessao;
+          Close;
+          SQL.Text := 'INSERT INTO parada_equipamento VALUES (:cod_grupo,      ' +
+                      '                                      :cod_regional,    ' +
+                      '                                      :cod_unidade,     ' +
+                      '                                      :cod_safra,       ' +
+                      '                                      :cod_equipamento, ' +
+                      '                                      :inicio_parada,   ' +
+                      '                                      NULL,             ' +
+                      '                                      :cod_motivo,      ' +
+                      '                                      :observacao,      ' +
+                      '                                      :parado,          ' +
+                      '                                      :campo_oficina,   ' +
+                      '                                      :ordemservico,    ' +
+                      '                                      :automatico)      ' ;
+          ParamByName('cod_grupo').AsFloat := dm.QR_UnidadeCOD_GRUPO.AsFloat;
+          ParamByName('cod_regional').AsFloat := dm.QR_UnidadeCOD_REGIONAL.AsFloat;
+          ParamByName('cod_unidade').AsFloat := dm.QR_UnidadeCOD_UNIDADE.AsFloat;
+          ParamByName('cod_safra').AsFloat := dm.QR_SafrasCOD_SAFRA.AsFloat;
+          ParamByName('cod_equipamento').AsString := FloatToStr(veiculo);
+          ParamByName('inicio_parada').AsDateTime := now;
+          ParamByName('cod_motivo').AsInteger := Motivo;
+          ParamByName('observacao').AsString := Observacao;
+          ParamByName('parado').AsString := 'S';
+          ParamByName('campo_oficina').AsString := Local;
+          ParamByName('ordemservico').AsString := OrdemServico;
+          ParamByName('automatico').AsString := 'N';
+          Execute;
+          Free;
+        end;
+        Self.Close;
+     end;
+ end
+ else
+ begin
+    if Application.MessageBox(PChar('Deseja retornar o equipamento '+FloatToStr(veiculo)+' em Operação?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDNO then
+          Abort;
+    TF_Monitoramento_Trafego_Estatico(owner).QR_Parado.Edit;
+    TF_Monitoramento_Trafego_Estatico(owner).QR_ParadoFIM_PARADA.AsDateTime := now;
+    TF_Monitoramento_Trafego_Estatico(owner).QR_Parado.Post;
+ end;
+ if Verificar_Formulario_Criado(TF_Monitoramento_Trafego_Estatico, False) then
+    TF_Monitoramento_Trafego_Estatico(owner).btnAtualizar.Click;
+ if Verificar_Formulario_Criado(TF_DisponibilidadesFrentes, False) then
+    TF_DisponibilidadesFrentes(owner).Cria_frentes;
+end;
+
+procedure TF_BalaoMensagemEquipamento.RzBitBtn2Click(Sender: TObject);
+var vEquipamento, vTipoEquipamento : String;
+    motivo : integer;
+    Local, Observacao, OrdemServico : String;
+begin
+   if not Verificar_Permissao_Alocar then
+   begin
+     Application.MessageBox('Usuário não tem permissão para alterar alocações.','Atenção',MB_ICONERROR+MB_OK);
+     Abort;
+   end;
+
+   if PageInformacoes.ActivePage = TabVeiculos then
+   begin
+     Application.MessageBox('Alteração não permitida, verificar tipo de alocação','Atenção',MB_OK+MB_ICONERROR);
+     Abort;
+   end;
+
+   vEquipamento := Copy(LBEquipamento.Caption,1,Pos(' ',LBEquipamento.Caption)-1);
+
+   with TOraQuery.Create(Self) do
+   begin
+     Close;
+     Session := dm.Sessao;
+     SQL.Text := 'SELECT t.tipo_cct                                    ' +
+                 '  FROM equipamento e,                                ' +
+                 '       tipo_equipamento t                            ' +
+                 ' WHERE e.cod_tipoequipamento = t.cod_tipoequipamento ' +
+                 '   AND e.cod_grupo           = :cod_grupo            ' +
+                 '   AND e.cod_equipamento     = :cod_equipamento      ' ;
+     ParamByName('cod_equipamento').AsString := vEquipamento;
+     ParamByName('cod_grupo').AsFloat := dm.QR_UnidadeCOD_GRUPO.AsFloat;
+     Open;
+     if IsEmpty then
+     begin
+       Application.MessageBox('Equipamento não localizado.','Atenção',MB_OK+MB_ICONERROR);
+       Free;
+       Abort;
+     end;
+     vTipoEquipamento := FieldByName('tipo_cct').AsString;
+     Free;
+   end;
+
+
+   if RzBitBtn2.Caption = 'Colocar em Parada' then
+   begin
+     with TOraQuery.Create(Self) do
+     begin
+       Close;
+       Session := dm.Sessao;
+       SQL.Text := 'SELECT ''X''                                ' +
+                   '  FROM frente_reboque                       ' +
+                   ' WHERE cod_grupo = :cod_grupo               ' +
+                   '   AND cod_equipamento = :cod_equipamento   ' +
+                   '   AND disponivel = ''S''                   ' +
+                   'UNION                                       ' +
+                   'SELECT ''X''                                ' +
+                   '  FROM frente_carregadeira                  ' +
+                   ' WHERE cod_grupo = :cod_grupo               ' +
+                   '   AND cod_equipamento = :cod_equipamento   ' +
+                   '   AND disponivel = ''S''                   ' +
+                   'UNION                                       ' +
+                   'SELECT ''X''                                ' +
+                   '  FROM parada_equipamento                   ' +
+                   ' WHERE cod_grupo = :cod_grupo               ' +
+                   '   AND cod_equipamento = :cod_equipamento   ' +
+                   '   AND parado = ''S''                       ' +
+                   '   AND intersecao(SYSDATE, SYSDATE, inicio_parada, fim_parada) = ''TRUE'' ' ;
+       ParamByName('cod_equipamento').AsFloat := StrToFloat(vEquipamento);
+       ParamByName('cod_grupo').AsFloat := dm.QR_UnidadeCOD_GRUPO.AsFloat;
+       Open;
+       if not IsEmpty then
+       begin
+         Application.MessageBox('Equipamento já está em parada, Verifique.','Aviso',MB_OK+MB_ICONERROR);
+         Free;
+         Abort;
+       end;
+       Free;
+     end;
+
+     if Application.MessageBox(Pchar('Deseja colocar o equipamento '+vEquipamento+' em parada?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDNO then
+        Abort;
+
+     if vTipoEquipamento = 'C' then //Quando for caminhão não faz a parada
+     begin
+       Application.MessageBox('Parada de veículo não permitida por esse procedimento, favor ir na tela de Monitoramento do Trafego.','Atenção',MB_OK+MB_ICONERROR);
+       Abort;
+     end;
+
+     if vTipoEquipamento = 'O' then //Quando for colhedora
+     begin
+        F_ParadaReboqueCarreg := TF_ParadaReboqueCarreg.Create(Self);
+
+       Local := 'C';
+       Motivo := 1;
+       Observacao := '';
+       OrdemServico := '';
+
+       if F_ParadaReboqueCarreg.Escolha(Local, OrdemServico, Observacao, Motivo) = 'S' then
+       begin
+        with TOraQuery.Create(Self) do
+        begin
+          Session := DM.Sessao;
+          SQL.Text := 'UPDATE FRENTE_CARREGADEIRA SET DISPONIVEL = ''S'' ' +
+                      '                            ,CAMPO_OFICINA = ' + QuotedStr(Local) +
+                      '                              ,OBSERVACAO  = ' + QuotedStr(Observacao) +
+                      '                              ,COD_MOTIVO  = ' + IntToStr(Motivo) +
+                      '                            , ORDEMSERVICO = ' + QuotedStr(Ordemservico) +
+                      '                            , DATA_HORA    = SYSDATE ' +
+                      ' WHERE COD_GRUPO = :COD_GRUPO                     ' +
+                      '   AND COD_REGIONAL = :COD_REGIONAL               ' +
+                      '   AND COD_UNIDADE = :COD_UNIDADE                 ' +
+                      '   AND COD_FRENTE = :COD_FRENTE                   ' +
+                      '   AND COD_SAFRA = :COD_SAFRA                     ' +
+                      '   AND COD_FAZENDA = :COD_FAZENDA                 ' +
+                      '   AND COD_EQUIPAMENTO = :COD_EQUIPAMENTO         ' ;
+                    ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+                    ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+                    ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+                    ParamByName('cod_safra').AsFloat := DM.QR_SafrasCOD_SAFRA.AsFloat;
+                    ParamByName('cod_frente').AsFloat := vCod_frente;
+                    ParamByName('cod_equipamento').AsInteger := StrToInt(vEquipamento);
+                    ParamByName('cod_fazenda').AsFloat := vCod_Fazenda;
+          Execute;
+          Free;
+        end;
+        dm.Sessao.Commit;
+       end;
+       F_ParadaReboqueCarreg.Release;
+
+     end;
+
+     if vTipoEquipamento = 'R' then //Quando for reboque
+     begin
+        F_ParadaReboqueCarreg := TF_ParadaReboqueCarreg.Create(Self);
+
+       Local := 'C';
+       Motivo := 1;
+       Observacao := '';
+       OrdemServico := '';
+
+       if F_ParadaReboqueCarreg.Escolha(Local,OrdemServico, Observacao, Motivo) = 'S' then
+       begin
+          with TOraQuery.Create(Self) do
+          begin
+            Session := DM.Sessao;
+            SQL.Text := 'UPDATE FRENTE_REBOQUE SET DISPONIVEL = ''S'' ' +
+                        '                            ,CAMPO_OFICINA = ' + QuotedStr(Local) +
+                        '                              ,OBSERVACAO  = ' + QuotedStr(Observacao) +
+                        '                              ,COD_MOTIVO  = ' + IntToStr(Motivo) +
+                        '                            , ORDEMSERVICO = ' + QuotedStr(Ordemservico) +
+                        '                            , DATA_HORA    = SYSDATE ' +
+                        ' WHERE COD_GRUPO = :COD_GRUPO                     ' +
+                        '   AND COD_REGIONAL = :COD_REGIONAL               ' +
+                        '   AND COD_UNIDADE = :COD_UNIDADE                 ' +
+                        '   AND COD_FRENTE = :COD_FRENTE                   ' +
+                        '   AND COD_SAFRA = :COD_SAFRA                     ' +
+                        '   AND COD_FAZENDA = :COD_FAZENDA                 ' +
+                        '   AND COD_EQUIPAMENTO = :COD_EQUIPAMENTO         ' ;
+                      ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+                      ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+                      ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+                      ParamByName('cod_safra').AsFloat := DM.QR_SafrasCOD_SAFRA.AsFloat;
+                      ParamByName('cod_frente').AsFloat := vCod_frente;
+                      ParamByName('cod_equipamento').AsInteger := StrToInt(vEquipamento);
+                      ParamByName('cod_fazenda').AsFloat := vCod_Fazenda;
+            Execute;
+            Free;
+          end;
+          dm.Sessao.Commit;
+        end;
+        F_ParadaReboqueCarreg.Release;
+     end;
+   end
+   else
+   begin
+     if Application.MessageBox(Pchar('Deseja colocar o equipamento '+vEquipamento+' em Operação?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDNO then
+        Abort;
+
+     if vTipoEquipamento = 'O' then //Quando for colhedora
+     begin
+        with TOraQuery.Create(Self) do
+        begin
+          Session := DM.Sessao;
+          SQL.Text := 'UPDATE FRENTE_CARREGADEIRA SET DISPONIVEL  = ''N'' ' +
+                      '                            ,CAMPO_OFICINA = ''C'' ' +
+                      '                              ,OBSERVACAO  = ''''  ' +
+                      '                              ,COD_MOTIVO  = ''''  ' +
+                      '                            , DATA_HORA    = SYSDATE ' +
+                      '                            , ORDEMSERVICO = '''' ' +
+                      ' WHERE COD_GRUPO = :COD_GRUPO                     ' +
+                      '   AND COD_REGIONAL = :COD_REGIONAL               ' +
+                      '   AND COD_UNIDADE = :COD_UNIDADE                 ' +
+                      '   AND COD_FRENTE = :COD_FRENTE                   ' +
+                      '   AND COD_SAFRA = :COD_SAFRA                     ' +
+                      '   AND COD_FAZENDA = :COD_FAZENDA                 ' +
+                      '   AND COD_EQUIPAMENTO = :COD_EQUIPAMENTO         ' ;
+                    ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+                    ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+                    ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+                    ParamByName('cod_safra').AsFloat := DM.QR_SafrasCOD_SAFRA.AsFloat;
+                    ParamByName('cod_frente').AsFloat := vCod_frente;
+                    ParamByName('cod_equipamento').AsInteger := StrToInt(vEquipamento);
+                    ParamByName('cod_fazenda').AsFloat := vCod_Fazenda;
+          Execute;
+          Free;
+        end;
+        dm.Sessao.Commit;
+
+     end;
+
+     if vTipoEquipamento = 'R' then //Quando for reboque
+     begin
+        with TOraQuery.Create(Self) do
+        begin
+          Session := DM.Sessao;
+          SQL.Text := 'UPDATE FRENTE_REBOQUE SET DISPONIVEL       = ''N'' ' +
+                      '                          ,CAMPO_OFICINA   = ''C'' ' +
+                      '                            ,OBSERVACAO    = ''''  ' +
+                      '                            ,COD_MOTIVO    = ''''  ' +
+                      '                            , DATA_HORA    = SYSDATE ' +
+                      '                            , ORDEMSERVICO = '''' ' +
+                      ' WHERE COD_GRUPO = :COD_GRUPO                    ' +
+                      '   AND COD_REGIONAL = :COD_REGIONAL              ' +
+                      '   AND COD_UNIDADE = :COD_UNIDADE                ' +
+                      '   AND COD_FRENTE = :COD_FRENTE                  ' +
+                      '   AND COD_SAFRA = :COD_SAFRA                    ' +
+                      '   AND COD_FAZENDA = :COD_FAZENDA                ' +
+                      '   AND COD_EQUIPAMENTO = :COD_EQUIPAMENTO        ' ;
+                    ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+                    ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+                    ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+                    ParamByName('cod_safra').AsFloat := DM.QR_SafrasCOD_SAFRA.AsFloat;
+                    ParamByName('cod_frente').AsFloat := vCod_frente;
+                    ParamByName('cod_equipamento').AsInteger := StrToInt(vEquipamento);
+                    ParamByName('cod_fazenda').AsFloat := vCod_Fazenda;
+          Execute;
+          Free;
+        end;
+        dm.Sessao.Commit;
+     end;
+
+     if vTipoEquipamento = 'C' then //Quando for caminhão
+     begin
+        with TOraQuery.Create(Self) do
+        begin
+          Close;
+          Session := dm.Sessao;
+          SQL.Text := 'UPDATE PARADA_EQUIPAMENTO SET FIM_PARADA = SYSDATE ' +
+                      ' WHERE COD_GRUPO       = :COD_GRUPO            ' +
+                      '   AND COD_REGIONAL    = :COD_REGIONAL         ' +
+                      '   AND COD_UNIDADE     = :COD_UNIDADE          ' +
+                      '   AND COD_SAFRA       = :COD_SAFRA            ' +
+                      '   AND COD_EQUIPAMENTO = :COD_EQUIPAMENTO      ' +
+                      '   AND PARADO          = ''S''                 ' ;
+          ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+          ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+          ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+          ParamByName('cod_safra').AsFloat := DM.QR_SafrasCOD_SAFRA.AsFloat;
+          ParamByName('cod_equipamento').AsInteger := StrToInt(vEquipamento);
+          ExecSQL;
+          Free;
+        end;
+     end;
+   end;
+   TF_DisponibilidadesFrentes(owner).Cria_frentes;
+   Desativar;
+end;
+
+procedure TF_BalaoMensagemEquipamento.Voltando1Click(Sender: TObject);
+var codigoVeiculo, Perc_trajeto : String;
+    Veiculo : Double;
+    Posicao : Integer;
+begin
+  codigoVeiculo := pnequipamento.caption;
+  Posicao := Pos(' ',CodigoVeiculo);
+  if Posicao = 0 then
+    begin
+      Application.MessageBox('Não existe alocação para esse equipamento.','Alocação não encontrada.',MB_ICONERROR + MB_OK);
+      Abort;
+    end
+  else
+  begin
+    Veiculo := StrToInt(Copy(CodigoVeiculo,1,Posicao - 1));
+  end;
+  if Application.MessageBox(Pchar('Deseja mudar a posição do equipamento ' + FloatToStr(Veiculo)+'?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDYES then
+  begin
+     Perc_trajeto := InputBox('Informação','Informe o quilômetro em que se encontra o equipamento.:','');
+     if Perc_trajeto = '' then
+     begin
+       Application.MessageBox('KM do trajeto não pode ser vazio.','Aviso',MB_OK+MB_ICONINFORMATION);
+       Abort;
+     end;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_COD_EQUIPAMENTO').AsFloat := Veiculo;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_STATUS').AsString := 'V';
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_KM_TRAJETO').AsString := Perc_trajeto;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_GRUPO').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_REGIONAL').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_UNIDADE').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.Execute;
+  end;
+end;
+
+procedure TF_BalaoMensagemEquipamento.VoltarStatusInicial1Click(
+  Sender: TObject);
+var codigoVeiculo, Perc_trajeto : String;
+    Veiculo : Double;
+    Posicao : Integer;
+begin
+  codigoVeiculo := pnequipamento.caption;
+  Posicao := Pos(' ',CodigoVeiculo);
+  if Posicao = 0 then
+    begin
+      Application.MessageBox('Não existe alocação para esse equipamento.','Alocação não encontrada.',MB_ICONERROR + MB_OK);
+      Abort;
+    end
+  else
+  begin
+    Veiculo := StrToInt(Copy(CodigoVeiculo,1,Posicao - 1));
+  end;
+  if Application.MessageBox(Pchar('Deseja mudar a posição do equipamento ' + FloatToStr(Veiculo)+'?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDYES then
+  begin
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_COD_EQUIPAMENTO').AsFloat := Veiculo;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_STATUS').AsString := 'Z';
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('P_KM_TRAJETO').AsString := '0';
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_GRUPO').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_REGIONAL').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.ParamByName('PCOD_UNIDADE').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+     PR_ATUALIZA_STATUS_VEICULO.Execute;
+  end;
+end;
+
+end.

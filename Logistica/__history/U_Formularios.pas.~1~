@@ -1,0 +1,25 @@
+unit U_Formularios;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, U_TemplateProcesso, Data.DB, DBAccess,
+  Ora, MemDS, Vcl.DBCtrls, RzButton, Vcl.ExtCtrls, RzPanel, RzSplit;
+
+type
+  TF_TemplateProcesso1 = class(TF_TemplateProcesso)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  F_TemplateProcesso1: TF_TemplateProcesso1;
+
+implementation
+
+{$R *.dfm}
+
+end.

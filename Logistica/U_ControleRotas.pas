@@ -1,0 +1,299 @@
+unit U_ControleRotas;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, U_TemplateConsulta, RzButton,
+  Vcl.ExtCtrls, RzPanel, RzSplit, cxGraphics, cxControls, cxLookAndFeels,
+  cxLookAndFeelPainters, cxStyles, dxSkinsCore, dxSkinsDefaultPainters,
+  dxSkinscxPCPainter, cxCustomData, cxFilter, cxData, cxDataStorage, cxEdit, DB,
+  cxDBData, wwdbdatetimepicker, Vcl.StdCtrls, Vcl.Mask, wwdbedit, cxGridLevel,
+  cxClasses, cxGridCustomView, cxGridCustomTableView, cxGridTableView,
+  cxGridDBTableView, cxGrid, DBAccess, Ora, MemDS, cxCheckBox, RzGroupBar,
+  RzRadChk;
+
+type
+  TF_ControleRotas = class(TF_TemplateConsulta)
+    cxGrid14: TcxGrid;
+    cxGridDBTableView9: TcxGridDBTableView;
+    cxGridLevel9: TcxGridLevel;
+    RzPanel39: TRzPanel;
+    QR_ControleRotas: TOraQuery;
+    DS_ControleRotas: TOraDataSource;
+    QR_ControleRotasSEQUENCIA: TFloatField;
+    QR_ControleRotasCOD_GRUPO: TFloatField;
+    QR_ControleRotasCOD_EQUIPAMENTO: TFloatField;
+    QR_ControleRotasCOD_FAZENDA: TFloatField;
+    QR_ControleRotasZONA: TFloatField;
+    QR_ControleRotasCOLETA_ROTA: TStringField;
+    QR_ControleRotasDATA: TDateTimeField;
+    QR_ControleRotasCOD_ROTA: TFloatField;
+    cxGridDBTableView9COD_EQUIPAMENTO: TcxGridDBColumn;
+    cxGridDBTableView9COD_FAZENDA: TcxGridDBColumn;
+    cxGridDBTableView9ZONA: TcxGridDBColumn;
+    cxGridDBTableView9COLETA_ROTA: TcxGridDBColumn;
+    cxGridDBTableView9DATA: TcxGridDBColumn;
+    cxGridDBTableView9COD_ROTA: TcxGridDBColumn;
+    QR_ControleRotasCOD_REGIONAL: TFloatField;
+    QR_ControleRotasCOD_UNIDADE: TFloatField;
+    RzGroupBarFerramentas: TRzGroupBar;
+    RzGroup3: TRzGroup;
+    RzGroup2: TRzGroup;
+    RzBitBtnAtualizarInformacoes: TRzBitBtn;
+    Label18: TLabel;
+    edtCodEquipamento: TwwDBEdit;
+    Label1: TLabel;
+    edtCodFazenda: TwwDBEdit;
+    Label5: TLabel;
+    edtZona: TwwDBEdit;
+    cbFiltroPeriodo: TComboBox;
+    RzPanel4: TRzPanel;
+    pnInformePeriodo: TRzPanel;
+    pnFiltroPeriodo: TPanel;
+    Label3: TLabel;
+    Label2: TLabel;
+    dtPickerDataInicial: TwwDBDateTimePicker;
+    dtPickerDataFinal: TwwDBDateTimePicker;
+    Panel1: TPanel;
+    btnGravar: TRzBitBtn;
+    btnExcluir: TRzBitBtn;
+    cbViagemColetaRota: TRzCheckBox;
+    QR_BuscaRotaAtiva: TOraQuery;
+    QR_BuscaRotaAtivaCOD_ROTA: TFloatField;
+    Label4: TLabel;
+    cbTipoCarga: TComboBox;
+    QR_TipoCarga: TOraQuery;
+    QR_TipoCargaCOD_TIPOCARGA: TFloatField;
+    QR_TipoCargaDESCRICAO: TStringField;
+    QR_ControleRotasCOD_TIPOCARGA: TFloatField;
+    QR_ControleRotasTIPOCARGA: TStringField;
+    cxGridDBTableView9TIPOCARGA: TcxGridDBColumn;
+    procedure cbFiltroPeriodoChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure RzBitBtnAtualizarInformacoesClick(Sender: TObject);
+    procedure QR_ControleRotasAfterOpen(DataSet: TDataSet);
+    procedure btnExcluirClick(Sender: TObject);
+    procedure btnGravarClick(Sender: TObject);
+    procedure QR_ControleRotasAfterDelete(DataSet: TDataSet);
+    procedure FormShow(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  F_ControleRotas: TF_ControleRotas;
+
+implementation
+
+{$R *.dfm}
+
+uses u_recursos, U_DM;
+
+procedure TF_ControleRotas.btnExcluirClick(Sender: TObject);
+begin
+  inherited;
+  if Application.MessageBox('Deseja excluir o registro ?','Confirmação',MB_ICONQUESTION + MB_YESNO) = mryes then
+    QR_ControleRotas.Delete;
+  cxGrid14.SetFocus;
+end;
+
+procedure TF_ControleRotas.btnGravarClick(Sender: TObject);
+var
+  v_aux : Double;
+  v_codRota : Double;
+begin
+  inherited;
+
+  if edtCodEquipamento.Text = '' then
+  begin
+    Application.MessageBox('O código do equipamento deve ser informado.','Atenção',MB_ICONINFORMATION + MB_OK);
+    edtCodEquipamento.SetFocus;
+    Abort;
+  end;
+
+  if edtCodFazenda.Text = '' then
+  begin
+    Application.MessageBox('O código da fazenda deve ser informado.','Atenção',MB_ICONINFORMATION + MB_OK);
+    edtCodFazenda.SetFocus;
+    Abort;
+  end;
+
+  try
+    v_aux := StrToFloat(edtCodEquipamento.Text);
+  except
+    Application.MessageBox('Código do equipamento deve ser numérico.','Atenção',MB_ICONINFORMATION + MB_OK);
+    edtCodEquipamento.SetFocus;
+    Abort;
+  end;
+
+  try
+    v_aux := StrToFloat(edtCodFazenda.Text);
+  except
+    Application.MessageBox('Código da fazenda deve ser numérico.','Atenção',MB_ICONINFORMATION + MB_OK);
+    edtCodFazenda.SetFocus;
+    Abort;
+  end;
+
+  if edtZona.Text <> '' then
+  begin
+    try
+      v_aux := StrToFloat(edtZona.Text);
+    except
+      Application.MessageBox('Código da zona deve ser numérico.','Atenção',MB_ICONINFORMATION + MB_OK);
+      edtZona.SetFocus;
+      Abort;
+    end;
+  end;
+
+  if not QR_TipoCarga.Locate('DESCRICAO',cbTipoCarga.Text,[]) then
+  begin
+    Application.MessageBox('Erro ao tentar encontrar tipo de carga. Por favor feche esta tela e abra novamente para atualizar as informações.','Atenção',MB_ICONERROR + MB_OK);
+    Abort;
+  end;
+
+
+  if not cbViagemColetaRota.Checked then
+  begin
+    QR_BuscaRotaAtiva.Close;
+    QR_BuscaRotaAtiva.ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+    QR_BuscaRotaAtiva.ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+    QR_BuscaRotaAtiva.ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+    QR_BuscaRotaAtiva.ParamByName('cod_fazenda').AsFloat := StrToFloat(edtCodFazenda.Text);
+    QR_BuscaRotaAtiva.ParamByName('zona').AsString := edtZona.Text;
+    QR_BuscaRotaAtiva.Open;
+
+    if QR_BuscaRotaAtiva.IsEmpty then
+    begin
+      Application.MessageBox('Não existe rota cadastrada ou ativa para a fazenda.','Atenção',MB_ICONINFORMATION + MB_OK);
+      QR_BuscaRotaAtiva.Close;
+      Abort;
+    end;
+
+    v_codRota := QR_BuscaRotaAtivaCOD_ROTA.AsFloat;
+  end;
+
+
+  try
+    QR_ControleRotas.Insert;
+    QR_ControleRotasSEQUENCIA.AsFloat := Incr_Sequence('SEQ_CONTROLE_ROTAS');
+    QR_ControleRotasCOD_GRUPO.AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+    QR_ControleRotasCOD_REGIONAL.AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+    QR_ControleRotasCOD_UNIDADE.AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+    QR_ControleRotasCOD_EQUIPAMENTO.AsFloat := StrToFloat(edtCodEquipamento.Text);
+    QR_ControleRotasCOD_FAZENDA.AsFloat := StrToFloat(edtCodFazenda.Text);
+    QR_ControleRotasZONA.AsString := edtZona.Text;
+    QR_ControleRotasDATA.AsDateTime := Sysdate_Banco;
+    QR_ControleRotasCOD_ROTA.AsFloat := v_codRota;
+    if cbViagemColetaRota.Checked then
+      QR_ControleRotasCOLETA_ROTA.AsString := 'S'
+    else
+      QR_ControleRotasCOLETA_ROTA.AsString := 'N';
+    QR_ControleRotasCOD_TIPOCARGA.AsFloat := QR_TipoCargaCOD_TIPOCARGA.AsFloat;
+    QR_ControleRotasTIPOCARGA.AsString := QR_TipoCargaDESCRICAO.AsString;
+    QR_ControleRotas.Post;
+  except
+    QR_ControleRotas.Cancel;
+  end;
+
+  QR_ControleRotas.Refresh;
+
+  Application.MessageBox('Informações gravadas com sucesso.','Informação',MB_ICONEXCLAMATION + MB_OK);
+
+  edtCodEquipamento.Clear;
+  edtCodFazenda.Clear;
+  edtZona.Clear;
+
+  edtCodEquipamento.SetFocus;
+end;
+
+procedure TF_ControleRotas.cbFiltroPeriodoChange(Sender: TObject);
+begin
+  inherited;
+  case cbFiltroPeriodo.ItemIndex of
+    0 : begin
+          pnInformePeriodo.Visible := False;
+          pnFiltroPeriodo.Visible := False;
+    end;
+    1 : begin
+          pnInformePeriodo.Visible := True;
+          pnFiltroPeriodo.Visible := True;
+    end;
+  end;
+end;
+
+procedure TF_ControleRotas.FormCreate(Sender: TObject);
+begin
+  top := 1;
+  left := 1;
+
+  inherited;
+
+
+
+  dtPickerDataInicial.Date := Sysdate_Banco;
+  dtPickerDataFinal.Date := Sysdate_Banco;
+
+  cbFiltroPeriodoChange(cbFiltroPeriodo);
+  RzBitBtnAtualizarInformacoes.Click;
+end;
+
+procedure TF_ControleRotas.FormShow(Sender: TObject);
+begin
+  inherited;
+  QR_TipoCarga.Close;
+  QR_TipoCarga.Open;
+
+  cbTipoCarga.Items.Clear;
+  while not QR_TipoCarga.Eof do
+  begin
+    cbTipoCarga.Items.Add(QR_TipoCargaDESCRICAO.AsString);
+    QR_TipoCarga.Next;
+  end;
+  if cbTipoCarga.Items.Count > 0 then
+    cbTipoCarga.ItemIndex := 0;
+
+  edtCodEquipamento.SetFocus;
+end;
+
+procedure TF_ControleRotas.QR_ControleRotasAfterDelete(DataSet: TDataSet);
+begin
+  inherited;
+  btnExcluir.Enabled := not DataSet.IsEmpty;
+end;
+
+procedure TF_ControleRotas.QR_ControleRotasAfterOpen(DataSet: TDataSet);
+begin
+  inherited;
+  btnExcluir.Enabled := not DataSet.IsEmpty;
+end;
+
+procedure TF_ControleRotas.RzBitBtnAtualizarInformacoesClick(Sender: TObject);
+begin
+  inherited;
+  if cbFiltroPeriodo.ItemIndex = 1 then
+  begin
+    if not Validar_Periodo(dtPickerDataInicial.Text,dtPickerDataFinal.Text) then
+      Abort;
+  end;
+
+  QR_ControleRotas.Close;
+  QR_ControleRotas.ParamByName('cod_grupo').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+  QR_ControleRotas.ParamByName('cod_regional').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+  QR_ControleRotas.ParamByName('cod_unidade').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+  if cbFiltroPeriodo.ItemIndex = 0 then
+    begin
+      QR_ControleRotas.ParamByName('data_ini').AsDate := Sysdate_Banco;
+      QR_ControleRotas.ParamByName('data_fim').AsDate := Sysdate_Banco;
+    end
+  else
+    begin
+      QR_ControleRotas.ParamByName('data_ini').AsDate := dtPickerDataInicial.Date;
+      QR_ControleRotas.ParamByName('data_fim').AsDate := dtPickerDataFinal.Date;
+    end;
+  QR_ControleRotas.Open;
+end;
+
+end.

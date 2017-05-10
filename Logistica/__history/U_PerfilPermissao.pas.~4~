@@ -1,0 +1,60 @@
+unit U_PerfilPermissao;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, U_TemplateConsulta, RzButton,
+  Vcl.ExtCtrls, RzPanel, RzSplit, cxGraphics, cxControls, cxLookAndFeels,
+  cxLookAndFeelPainters, cxStyles, dxSkinsCore, dxSkinsDefaultPainters,
+  dxSkinscxPCPainter, cxCustomData, cxFilter, cxData, cxDataStorage, cxEdit, DB,
+  cxDBData, Vcl.StdCtrls, Vcl.Buttons, Vcl.Mask, wwdbedit,
+  cxGridBandedTableView, cxGridDBBandedTableView, cxGridLevel, cxClasses,
+  cxGridCustomView, cxGridCustomTableView, cxGridTableView, cxGridDBTableView,
+  cxGrid, cxCheckBox, DBAccess, Ora, MemDS;
+
+type
+  TF_PerfilPermissao = class(TF_TemplateConsulta)
+    cxGrid1DBTableView1: TcxGridDBTableView;
+    cxGrid1: TcxGrid;
+    cxGrid1Level2: TcxGridLevel;
+    cxGrid1DBBandedTableView1: TcxGridDBBandedTableView;
+    Panel1: TPanel;
+    edtCod_perfil: TwwDBEdit;
+    btnPesquisa_Perfil: TSpeedButton;
+    edtNome_perfil: TwwDBEdit;
+    Label3: TLabel;
+    QR_ArvoreAcesso: TOraQuery;
+    DS_ArvoreAcesso: TOraDataSource;
+    QR_ArvoreAcessoCOD_MODULO: TFloatField;
+    QR_ArvoreAcessoDESCMODULO: TStringField;
+    QR_ArvoreAcessoCOD_MENU: TFloatField;
+    QR_ArvoreAcessoDESCMENU: TStringField;
+    QR_ArvoreAcessoCOD_TELA: TFloatField;
+    QR_ArvoreAcessoNOME: TStringField;
+    cxGrid1DBBandedTableView1COD_MODULO: TcxGridDBBandedColumn;
+    cxGrid1DBBandedTableView1DESCMODULO: TcxGridDBBandedColumn;
+    cxGrid1DBBandedTableView1COD_MENU: TcxGridDBBandedColumn;
+    cxGrid1DBBandedTableView1DESCMENU: TcxGridDBBandedColumn;
+    cxGrid1DBBandedTableView1COD_TELA: TcxGridDBBandedColumn;
+    cxGrid1DBBandedTableView1NOME: TcxGridDBBandedColumn;
+    QR_ArvoreAcessoPOSSUIAUTORIZACAO: TFloatField;
+    QR_ArvoreAcessoINFOAUTORIZACAO: TStringField;
+    cxGrid1DBBandedTableView1POSSUIAUTORIZACAO: TcxGridDBBandedColumn;
+    cxGrid1DBBandedTableView1INFOAUTORIZACAO: TcxGridDBBandedColumn;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  F_PerfilPermissao: TF_PerfilPermissao;
+
+implementation
+
+{$R *.dfm}
+
+uses U_DM;
+
+end.

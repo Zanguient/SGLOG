@@ -1,0 +1,890 @@
+unit U_GravarAlocacao;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Mask,
+  wwdbedit, Vcl.Buttons, RzPanel, RzButton, Ora, Data.DB, MemDS, DBAccess,
+  RzEdit, RzDBEdit;
+
+type
+  TF_GravarAlocacao = class(TForm)
+    RzPanel1: TRzPanel;
+    Label3: TLabel;
+    Label4: TLabel;
+    pesquisa_veiculo: TSpeedButton;
+    b_tipocarga: TSpeedButton;
+    Label6: TLabel;
+    Label1: TLabel;
+    Label2: TLabel;
+    b_pesquisa: TSpeedButton;
+    SpeedButton1: TSpeedButton;
+    wwDBEdit5: TwwDBEdit;
+    wwDBEdit6: TwwDBEdit;
+    wwDBEdit7: TwwDBEdit;
+    wwDBEdit8: TwwDBEdit;
+    wwDBEdit11: TwwDBEdit;
+    CheckBox3: TCheckBox;
+    wwDBEdit1: TwwDBEdit;
+    wwDBEdit2: TwwDBEdit;
+    wwDBEdit3: TwwDBEdit;
+    wwDBEdit4: TwwDBEdit;
+    Panel2: TPanel;
+    RzPanel2: TRzPanel;
+    RzBitBtn1: TRzBitBtn;
+    RzBitBtn2: TRzBitBtn;
+    RzBitBtn3: TRzBitBtn;
+    QR_PesquisaVeiculo: TOraQuery;
+    QR_PesquisaVeiculoCodigo: TFloatField;
+    QR_PesquisaVeiculoVeiculo: TStringField;
+    SP_FN_SelecionaFazenda: TOraStoredProc;
+    CheckBox1: TCheckBox;
+    CheckBox2: TCheckBox;
+    TM_AlocacaoAutomatica: TTimer;
+    PR_Atualiza_Excesso_Eq_Frente: TOraStoredProc;
+    SP_Calculavazao: TOraStoredProc;
+    SP_GeraAlocacaoPendentePatio: TOraStoredProc;
+    procedure alocarmanual(Sender: TObject);
+    procedure pesquisa_veiculoClick(Sender: TObject);
+    procedure b_tipocargaClick(Sender: TObject);
+    procedure b_pesquisaClick(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
+    procedure wwDBEdit5Exit(Sender: TObject);
+    procedure wwDBEdit7Exit(Sender: TObject);
+    procedure wwDBEdit1Exit(Sender: TObject);
+    procedure wwDBEdit3Exit(Sender: TObject);
+    procedure FormKeyPress(Sender: TObject; var Key: Char);
+    procedure FormShow(Sender: TObject);
+    procedure FormDeactivate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure RzBitBtn2Click(Sender: TObject);
+    procedure wwDBEdit1Enter(Sender: TObject);
+    procedure TM_AlocacaoAutomaticaTimer(Sender: TObject);
+    procedure RzBitBtn1Click(Sender: TObject);
+  private
+    { Private declarations }
+    old_frente : String;
+    modal : Integer;
+    v_frente, v_fazenda, vEnd_H, vEnd_L : String;
+
+  public
+    { Public declarations }
+    FTop, FLeft : Integer;
+    tipo_alocacao : String;
+    Equipamento_AL_Pendente : Integer;
+  end;
+
+var
+  F_GravarAlocacao: TF_GravarAlocacao;
+
+implementation
+
+{$R *.dfm}
+
+uses U_DM, U_BuscaAvancada, u_recursos, U_AlocacaoEquipamento,
+  U_ParadaReboqueCarreg;
+
+procedure TF_GravarAlocacao.alocarmanual(Sender: TObject);
+var
+    EnviarMensagem : String;
+    v_sequencia : Integer;
+begin
+
+  if not fn_computador_logistica(dm.QR_UnidadeCOD_GRUPO.AsInteger,
+                                 dm.QR_UnidadeCOD_REGIONAL.AsInteger,
+                                 dm.QR_UnidadeCOD_UNIDADE.AsInteger,
+                                 fnc_computador_logado) then
+  begin
+    Application.MessageBox('Computador não autorizado para inserir alocações.','Aviso',MB_OK+MB_ICONWARNING);
+    Abort;
+  end;
+
+    if wwDBEdit5.Text = '' then
+    begin
+      Application.MessageBox('Codigo do equipamento n?o informado.','Erro',mb_ok+mb_iconerror);
+      Abort;
+    end;
+
+    with TOraQuery.Create(Self)do
+    begin
+      Session := dm.Sessao;
+      Close;
+      SQL.Text := 'SELECT 1 REG FROM ALOCACAO WHERE COD_ENTRADACANA = 0 AND COD_EQUIPAMENTO = '+ wwDBEdit5.Text +
+                  ' AND COD_GRUPO = '+ DM.QR_UnidadeCOD_GRUPO.AsString +
+                  ' AND COD_REGIONAL = '+ DM.QR_UnidadeCOD_REGIONAL.AsString +
+                  ' AND COD_UNIDADE = '+ DM.QR_UnidadeCOD_UNIDADE.AsString +
+                  ' AND VIAGEM_FINALIZADA = ''N''                         ' +
+                  ' UNION ' +
+                  'SELECT 1 REG FROM ALOCACAO_PATIO WHERE COD_EQUIPAMENTO = '+ wwDBEdit5.Text +
+                  ' AND COD_GRUPO = '+ DM.QR_UnidadeCOD_GRUPO.AsString +
+                  ' AND COD_REGIONAL = '+ DM.QR_UnidadeCOD_REGIONAL.AsString +
+                  ' AND COD_UNIDADE = '+ DM.QR_UnidadeCOD_UNIDADE.AsString +
+                  ' UNION ' +
+                  'SELECT 1 REG FROM PARADA_EQUIPAMENTO WHERE COD_EQUIPAMENTO = '+ wwDBEdit5.Text +
+                  ' AND COD_GRUPO = '+ DM.QR_UnidadeCOD_GRUPO.AsString +
+                  ' AND COD_REGIONAL = '+ DM.QR_UnidadeCOD_REGIONAL.AsString +
+                  ' AND COD_UNIDADE = '+ DM.QR_UnidadeCOD_UNIDADE.AsString +
+                  ' AND PARADO = ''S''  ';
+
+      Open;
+      if  not IsEmpty then
+      begin
+        Application.MessageBox('Equipamento já está alocado.','Erro',mb_ok+mb_iconerror);
+        Free;
+        Abort;
+      end;
+      Free;
+    end;
+
+    if wwDBEdit7.Text = '' then
+    begin
+      Application.MessageBox('Codigo do tipo de carga n?o informado.','Erro',mb_ok+mb_iconerror);
+      Abort;
+    end;
+
+    if wwDBEdit1.Text = '' then
+    begin
+      Application.MessageBox('Codigo da frente n?o informado.','Erro',mb_ok+mb_iconerror);
+      Abort;
+    end;
+    if (wwDBEdit3.Text = '') or (wwDBEdit4.Text = '') then
+    begin
+      Application.MessageBox('Codigo da fazenda n?o informado.','Erro',mb_ok+mb_iconerror);
+      Abort;
+    end;
+
+    //executa procedimento que atualizar o saldo e frente patio
+    SP_GeraAlocacaoPendentePatio.Execute;
+
+    wwDBEdit5Exit(Self);
+    wwDBEdit7Exit(Self);
+    wwDBEdit1Exit(Self);
+    if v_frente <> fn_frente_patio then
+       wwDBEdit3Exit(Self);
+
+    if v_frente = fn_frente_patio then
+    begin
+        //pega a sequencia do patio
+        with TOraQuery.Create(Self) do
+        begin
+          Session := DM.Sessao;
+          Close;
+          SQL.Text := 'select NVL(Max(sequencia),0) + 1 sequencia ' +
+                      '  from alocacao_patio '+
+                      ' where cod_grupo = '+ dm.QR_UnidadeCOD_GRUPO.AsString +
+                      '   and cod_regional = ' + dm.QR_UnidadeCOD_REGIONAL.AsString +
+                      '   and cod_unidade = ' + dm.QR_UnidadeCOD_UNIDADE.AsString;
+          Open;
+          if not IsEmpty then
+            v_sequencia := FieldByName('sequencia').AsInteger
+          else v_sequencia := 1;
+          Free;
+        end;
+
+        //gerar a alocação not patio
+        With TOraQuery.Create(self) do begin
+             Session := DM.Sessao;
+             SQL.Add('INSERT INTO alocacao_patio ');
+             SQL.Add('            (cod_equipamento, cod_tipocarga, data,');
+             SQL.Add('             cod_grupo, cod_regional, cod_unidade, mensagem_painel, sequencia)');
+             SQL.Add('     VALUES (:cod_equipamento, :cod_tipocarga, SYSDATE,');
+             SQL.Add('             :cod_grupo, :cod_regional, :cod_unidade,');
+             SQL.Add('             :mensagem_painel, :sequencia)');
+             ParamByName('COD_EQUIPAMENTO').AsFloat     := StrToFloat(wwDBEdit5.Text);
+             ParamByName('COD_TIPOCARGA').AsFloat       := StrToFloat(wwDBEdit7.Text);
+             ParamByName('COD_GRUPO').AsInteger := DM.QR_UnidadeCOD_GRUPO.AsInteger;
+             ParamByName('COD_REGIONAL').AsInteger := DM.QR_UnidadeCOD_REGIONAL.AsInteger;
+             ParamByName('COD_UNIDADE').AsInteger := DM.QR_UnidadeCOD_UNIDADE.AsInteger;
+             if CheckBox3.Checked then EnviarMensagem := 'S' else EnviarMensagem := 'N';
+             ParamByName('MENSAGEM_PAINEL').asString    := EnviarMensagem;
+             ParamByName('sequencia').AsInteger := v_sequencia;
+             Execute;
+             Free;
+        End;
+    end
+    else
+    begin
+        //gerar a alocação
+        With TOraQuery.Create(self) do begin
+             Session := DM.Sessao;
+             SQL.Add('INSERT INTO ALOCACAO(');
+             SQL.Add('COD_SAFRA, COD_FRENTE, COD_FAZENDA, ');
+             SQL.Add('COD_EQUIPAMENTO, DATA_SAIDA, ABASTECEU, BITUCA,COD_TIPOCARGA, COD_FRENTE_SUGERIDA, COD_FAZENDA_SUGERIDA, ');
+             SQL.Add('COD_GRUPO, COD_REGIONAL, COD_UNIDADE, MENSAGEM_PAINEL, ORIGEM_ALOCACAO, ENDERECO_H_ZIGBEE, ENDERECO_L_ZIGBEE)');
+             SQL.Add('VALUES (');
+             SQL.Add(':COD_SAFRA, :COD_FRENTE, :COD_FAZENDA,');
+             SQL.Add(':COD_EQUIPAMENTO, :DATA_SAIDA, :ABASTECEU, :BITUCA, :COD_TIPOCARGA, :COD_FRENTE_SUGERIDA, :COD_FAZENDA_SUGERIDA, ');
+             SQL.Add(':COD_GRUPO, :COD_REGIONAL, :COD_UNIDADE, :MENSAGEM_PAINEL, :ORIGEM_ALOCACAO, :ENDERECO_H_ZIGBEE, :ENDERECO_L_ZIGBEE )');
+             ParamByName('COD_GRUPO').AsInteger := DM.QR_UnidadeCOD_GRUPO.AsInteger;
+             ParamByName('COD_REGIONAL').AsInteger := DM.QR_UnidadeCOD_REGIONAL.AsInteger;
+             ParamByName('COD_UNIDADE').AsInteger := DM.QR_UnidadeCOD_UNIDADE.AsInteger;
+             ParamByName('COD_SAFRA').AsFloat           := DM.QR_SafrasCOD_SAFRA.AsFloat;
+             ParamByName('COD_FRENTE').AsFloat          := StrToFloat(wwDBEdit1.Text);
+             ParamByName('COD_FAZENDA').AsFloat         := StrToFloat(wwDBEdit3.Text);
+             ParamByName('COD_EQUIPAMENTO').AsFloat     := StrToFloat(wwDBEdit5.Text);
+             ParamByName('DATA_SAIDA').AsDateTime       := StrToDateTime(wwDBEdit11.Text);
+             ParamByName('COD_FRENTE_SUGERIDA').AsFloat := StrToFloat(v_frente);
+             ParamByName('COD_FAZENDA_SUGERIDA').AsFloat:= StrToFloat(v_fazenda);
+             ParamByName('ENDERECO_H_ZIGBEE').AsString := vEnd_H;
+             ParamByName('ENDERECO_L_ZIGBEE').AsString := vEnd_L;
+             if tipo_alocacao = 'A' then
+               ParamByName('ORIGEM_ALOCACAO').AsString := 'EC'
+             else
+               ParamByName('ORIGEM_ALOCACAO').AsString := 'AL';
+             If CheckBox1.Checked then
+                ParamByName('ABASTECEU').AsString       := 'S'
+             else
+                ParamByName('ABASTECEU').AsString       := 'N';
+             If CheckBox2.Checked then
+                ParamByName('BITUCA').AsString          := 'S'
+             else
+                ParamByName('BITUCA').AsString          := 'N';
+             ParamByName('COD_TIPOCARGA').AsFloat       := StrToFloat(wwDBEdit7.Text);
+             if CheckBox3.Checked then EnviarMensagem := 'S' else EnviarMensagem := 'N';
+             ParamByName('MENSAGEM_PAINEL').asString    := EnviarMensagem;
+             Execute;
+             Free;
+        End;
+
+    end;
+
+    //calcula a vazão depois que alocou o equipamento
+    SP_Calculavazao.Execute;
+
+    //gravou a alocação, já posso excluir da tabela alocacao_pendente
+    With TOraQuery.Create(self) do
+    begin
+         Session := DM.Sessao;
+         SQL.Add('DELETE FROM ALOCACAO_PENDENTE');
+         SQL.Add('WHERE COD_EQUIPAMENTO = :COD_EQUIPAMENTO');
+         SQL.Add('  AND COD_GRUPO = :COD_GRUPO');
+         SQL.Add('  AND COD_REGIONAL = :COD_REGIONAL');
+         SQL.Add('  AND COD_UNIDADE = :COD_UNIDADE');
+         ParamByName('COD_EQUIPAMENTO').asInteger := StrToInt(Trim(wwDBEdit5.Text));
+         ParamByName('COD_GRUPO').asInteger := DM.QR_UnidadeCOD_GRUPO.AsInteger;
+         ParamByName('COD_REGIONAL').asInteger := DM.QR_UnidadeCOD_REGIONAL.AsInteger;;
+         ParamByName('COD_UNIDADE').asInteger := DM.QR_UnidadeCOD_UNIDADE.AsInteger;;
+         Execute;
+         Free;
+    End;
+
+    modal := 0;
+    DM.Sessao.Commit;
+   // Ja alocou para o timer da alocacao automatica
+    TM_AlocacaoAutomatica.Enabled := False;
+    Close;
+    //F_AlocacaoEquipamento.RzBitBtn12Click(TF_AlocacaoEquipamento(owner));
+end;
+
+procedure TF_GravarAlocacao.b_pesquisaClick(Sender: TObject);
+Var valor:Variant;
+    SQL:String;
+begin
+//   desabilita_alocacao(Sender);
+//   showmessage('lembrar de habilitar recurso que desabilita o botao gravar');
+   SQL := '         SELECT DISTINCT b.descricao "Frente", a.cod_frente "Código" ';
+   SQL := SQL + '     FROM fazendas_liberadas a, frente b     ';
+   SQL := SQL + '    WHERE a.cod_frente = b.cod_frente                          ';
+   SQL := SQL + '      AND a.cod_safra = ' + DM.QR_SafrasCOD_SAFRA.AsString ;
+   SQL := SQL + '      AND b.cod_safra = a.cod_safra                            ';
+   SQL := SQL + '          &Macro                                               ';
+   SQL := SQL + ' ORDER BY b.descricao                                          ';
+   valor := F_BuscaAvancada.Buscar(sql,2,'Busca de Frentes');;
+   If valor <> null then begin
+      wwDBEdit1.Text := VarToStr(valor);
+      wwDBEdit1Exit(Sender);
+   end;
+
+end;
+
+procedure TF_GravarAlocacao.b_tipocargaClick(Sender: TObject);
+Var valor:Variant;
+    SQL:String;
+begin
+//   showmessage('lembrar de habilitar recurso que desabilita o botao gravar');
+   If wwDBEdit1.Text='' then//pego de todas as frentes
+   begin
+      SQL := '         SELECT DISTINCT b.descricao "Tipo de Carga", b.cod_tipocarga "Código" ';
+      SQL := SQL + '     FROM parametro_frente_faz_tipocarga a, tipo_carga b ';
+      SQL := SQL + '    WHERE a.cod_safra = ' + DM.QR_SafrasCOD_SAFRA.AsString ;
+      SQL := SQL + '      AND a.cod_tipocarga = b.cod_tipocarga                  ';
+      SQL := SQL + '          &Macro                                             ';
+      SQL := SQL + ' ORDER BY b.descricao                                        ';
+   end
+   else//apenas da frente especificada
+   begin
+      SQL := '         SELECT DISTINCT b.descricao "Tipo de Carga",              ';
+      SQL := SQL + '          b.cod_tipocarga "Código"                           ';
+      SQL := SQL + '     FROM parametro_frente_faz_tipocarga a, tipo_carga b ';
+      SQL := SQL + '    WHERE a.cod_safra = ' + DM.QR_SafrasCOD_SAFRA.AsString ;
+      SQL := SQL + '      AND a.cod_frente = ' + wwDBEdit1.Text ;
+      SQL := SQL + '      AND a.cod_tipocarga = b.cod_tipocarga ';
+      SQL := SQL + '          &Macro                            ';
+      SQL := SQL + ' ORDER BY b.descricao                       ';
+   end;
+
+   valor := F_BuscaAvancada.Buscar(sql,2,'Busca de Tipo de Carga');;
+   If valor <> null then begin
+     if wwDBEdit7.Text <> VarToStr(valor) then
+        RzBitBtn3.Enabled := False;
+      wwDBEdit7.Text := VarToStr(valor);
+      wwDBEdit7Exit(Sender);
+   end;
+
+end;
+
+procedure TF_GravarAlocacao.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+   modal := 0;
+   tipo_alocacao := 'A';
+   TM_AlocacaoAutomatica.Enabled := False;
+end;
+
+procedure TF_GravarAlocacao.FormDeactivate(Sender: TObject);
+begin
+  if modal > 0 then
+  begin
+    Self.SetFocus;
+  end;
+end;
+
+procedure TF_GravarAlocacao.FormKeyPress(Sender: TObject; var Key: Char);
+begin
+if (Key = #13) then
+begin
+  Key := #0;
+  Perform(WM_NEXTDLGCTL, 0, 0);
+end;
+end;
+
+procedure TF_GravarAlocacao.FormShow(Sender: TObject);
+begin
+  modal := 1;
+  If tipo_alocacao = 'M' then
+  begin
+     wwDBEdit5.Clear;
+     wwDBEdit7.Clear;
+     wwDBEdit1.Clear;
+     wwDBEdit3.Clear;
+     wwDBEdit6.Clear;
+     wwDBEdit8.Clear;
+     wwDBEdit2.Clear;
+     wwDBEdit4.Clear;
+     RzBitBtn3.Enabled := False;
+     TM_AlocacaoAutomatica.Enabled := False;
+  end
+  else
+  begin
+    //inserir busca da frente e fazenda
+    with TOraQuery.Create(Self) do
+    begin
+      Session := DM.Sessao;
+      SQL.Clear;
+      SQL.Add('SELECT COD_ENTRADACANA, COD_EQUIPAMENTO,');
+      SQL.Add('       COD_TIPOCARGA, DATA_CHEGADA, COD_UNIDADE, ');
+      SQL.Add('       COD_GRUPO, COD_REGIONAL, ENDERECO_H_ZIGBEE, ENDERECO_L_ZIGBEE, ');
+      SQL.Add('       ALOCACAO_PATIO, COD_FRENTE, COD_FAZENDA');
+      SQL.Add('  FROM ALOCACAO_PENDENTE');
+      SQL.Add(' WHERE COD_EQUIPAMENTO = :COD_EQUIPAMENTO');
+      SQL.Add('   AND COD_GRUPO = :COD_GRUPO');
+      SQL.Add('   AND COD_REGIONAL = :COD_REGIONAL');
+      SQL.Add('   AND COD_UNIDADE = :COD_UNIDADE');
+      ParamByName('COD_EQUIPAMENTO').AsInteger := Equipamento_AL_Pendente;
+      ParamByName('COD_GRUPO').AsInteger := DM.QR_UnidadeCOD_GRUPO.AsInteger;
+      ParamByName('COD_REGIONAL').AsInteger := DM.QR_UnidadeCOD_REGIONAL.AsInteger;
+      ParamByName('COD_UNIDADE').AsInteger := DM.QR_UnidadeCOD_UNIDADE.AsInteger;
+      Open;
+      if not IsEmpty then
+      begin
+         vEnd_H := FieldByName('ENDERECO_H_ZIGBEE').AsString;
+         vEnd_L := FieldByName('ENDERECO_L_ZIGBEE').AsString;
+         if FieldByName('ALOCACAO_PATIO').AsString = 'S' then
+         begin
+             v_frente := FieldByName('cod_frente').AsString;
+             v_fazenda := FieldByName('cod_fazenda').AsString;
+             wwDBEdit1.Text := v_frente;
+             wwDBEdit1Exit(Self);
+             wwDBEdit3.Text := v_fazenda;
+             wwDBEdit3Exit(Self);
+             wwDBEdit5.Text := FieldByName('cod_equipamento').AsString;
+             wwDBEdit5Exit(Self);
+             wwDBEdit7.Text := FieldByName('cod_tipocarga').AsString;
+             wwDBEdit7Exit(Self);
+         end
+         else
+         begin
+             wwDBEdit5.Text := FieldByName('cod_equipamento').AsString;
+             wwDBEdit5Exit(Self);
+             wwDBEdit7.Text := FieldByName('cod_tipocarga').AsString;
+             wwDBEdit7Exit(Self);
+             RzBitBtn2Click(Self);
+         end;
+      end;
+      Free;
+    end;
+    //habilita o botao para alocar
+    RzBitBtn3.Enabled := True;
+   //pegar o tempo para alocação automatica
+     with TOraQuery.Create(Self) do
+     begin
+       SQL.Text := 'SELECT NVL(tempo_alocacao_automatica,0) tempo ' +
+                   '  FROM parametros_logistica                   ' +
+                   ' WHERE cod_grupo = :cod_grupo                 ' +
+                   '   AND cod_regional = :cod_regional           ' +
+                   '   AND cod_unidade = :cod_unidade '            ;
+       ParamByName('cod_grupo').AsFloat := dm.QR_UnidadeCOD_GRUPO.AsFloat;
+       ParamByName('cod_regional').AsFloat := dm.QR_UnidadeCOD_REGIONAL.AsFloat;
+       ParamByName('cod_unidade').AsFloat := dm.QR_UnidadeCOD_UNIDADE.AsFloat;
+       Open;
+
+       if not IsEmpty then
+       begin
+         if FieldByName('tempo').AsFloat > 0 then
+         begin
+           TM_AlocacaoAutomatica.Interval := trunc(FieldByName('tempo').AsFloat * 1000);
+           TM_AlocacaoAutomatica.Enabled := True;
+         end;
+       end
+       else
+           Application.MessageBox('Parametros Logistica não encontrados para empresa logada.','Aviso',MB_OK+MB_ICONWARNING) ;
+       Free;
+     end;
+  end;
+
+  wwDBEdit11.Text := DateTimeToStr(Sysdate_Banco);
+
+  Top := FTop - trunc(Height/2);
+  Left := Fleft - trunc(Width/2);
+
+end;
+
+procedure TF_GravarAlocacao.pesquisa_veiculoClick(Sender: TObject);
+var SQL : String;
+    valor : Variant;
+begin
+//   showmessage('lembrar de habilitar recurso que desabilita o botao gravar');
+  Sql := '         SELECT equipamento.cod_equipamento "Código", equipamento.descricao "Veículo" ';
+  Sql := Sql + '     FROM equipamento, tipo_equipamento                                          ';
+  Sql := Sql + '    WHERE equipamento.cod_tipoequipamento = tipo_equipamento.cod_tipoequipamento ';
+  Sql := Sql + '      AND tipo_equipamento.tipo_cct = ''C''                                      ';
+  Sql := Sql + '          &Macro                                                                ';
+  Sql := Sql + ' ORDER BY equipamento.descricao                                                 ';
+
+   SQL := ReplStr(SQL,':cod_equipamento','0');
+   valor := F_BuscaAvancada.Buscar(sql,1,'Busca de Equipamentos');
+   If valor <> null then begin
+      if wwDBEdit5.Text <> VarToStr(valor) then
+         RzBitBtn3.Enabled := False;
+      wwDBEdit5.Text := VarToStr(valor);
+      wwDBEdit5Exit(Sender);
+   end;
+end;
+
+procedure TF_GravarAlocacao.RzBitBtn1Click(Sender: TObject);
+var Local, Observacao, OrdemServico : String;
+  Motivo : Integer;
+begin
+
+   if Application.MessageBox(PChar('Deseja realmente colocar o equipamento '+wwdbedit5.Text+' em parada?'),'Confirmação',MB_YESNO+MB_ICONQUESTION) = IDNO then
+      Abort;
+
+    with TOraQuery.Create(Self)do
+    begin
+      Session := dm.Sessao;
+      Close;
+      SQL.Text := 'SELECT 1 REG FROM ALOCACAO WHERE COD_ENTRADACANA = 0 AND COD_EQUIPAMENTO = '+ wwDBEdit5.Text +
+                  ' AND COD_GRUPO = '+ DM.QR_UnidadeCOD_GRUPO.AsString +
+                  ' AND COD_REGIONAL = '+ DM.QR_UnidadeCOD_REGIONAL.AsString +
+                  ' AND COD_UNIDADE = '+ DM.QR_UnidadeCOD_UNIDADE.AsString +
+                  ' AND VIAGEM_FINALIZADA = ''N''                         ' +
+                  ' UNION ' +
+                  'SELECT 1 REG FROM ALOCACAO_PATIO WHERE COD_EQUIPAMENTO = '+ wwDBEdit5.Text +
+                  ' AND COD_GRUPO = '+ DM.QR_UnidadeCOD_GRUPO.AsString +
+                  ' AND COD_REGIONAL = '+ DM.QR_UnidadeCOD_REGIONAL.AsString +
+                  ' AND COD_UNIDADE = '+ DM.QR_UnidadeCOD_UNIDADE.AsString +
+                  ' UNION ' +
+                  'SELECT 1 REG FROM PARADA_EQUIPAMENTO WHERE COD_EQUIPAMENTO = '+ wwDBEdit5.Text +
+                  ' AND COD_GRUPO = '+ DM.QR_UnidadeCOD_GRUPO.AsString +
+                  ' AND COD_REGIONAL = '+ DM.QR_UnidadeCOD_REGIONAL.AsString +
+                  ' AND COD_UNIDADE = '+ DM.QR_UnidadeCOD_UNIDADE.AsString +
+                  ' AND PARADO = ''S''  ';
+
+      Open;
+      if  not IsEmpty then
+      begin
+        Application.MessageBox('Equipamento está ALOCADO ou em PARADA.','Erro',mb_ok+mb_iconerror);
+        Free;
+        Abort;
+      end;
+      Free;
+    end;
+
+ Local := 'C';
+ Motivo := 1;
+ Observacao := '';
+ OrdemServico := '';
+
+  F_ParadaReboqueCarreg := TF_ParadaReboqueCarreg.Create(Self);
+
+ if F_ParadaReboqueCarreg.Escolha(Local, Observacao, Motivo, OrdemServico) = 'S' then
+ begin
+    with TOraQuery.Create(Self)do
+    begin
+      Session := dm.Sessao;
+      Close;
+      SQL.Text := 'INSERT INTO parada_equipamento VALUES (:cod_grupo,      ' +
+                  '                                      :cod_regional,    ' +
+                  '                                      :cod_unidade,     ' +
+                  '                                      :cod_safra,       ' +
+                  '                                      :cod_equipamento, ' +
+                  '                                      :inicio_parada,   ' +
+                  '                                      NULL,             ' +
+                  '                                      :cod_motivo,      ' +
+                  '                                      :observacao,      ' +
+                  '                                      :parado,          ' +
+                  '                                      :campo_oficina,   ' +
+                  '                                      :ordemservico,    ' +
+                  '                                      :automatico)      ' ;
+      ParamByName('cod_grupo').AsFloat := dm.QR_UnidadeCOD_GRUPO.AsFloat;
+      ParamByName('cod_regional').AsFloat := dm.QR_UnidadeCOD_REGIONAL.AsFloat;
+      ParamByName('cod_unidade').AsFloat := dm.QR_UnidadeCOD_UNIDADE.AsFloat;
+      ParamByName('cod_safra').AsFloat := dm.QR_SafrasCOD_SAFRA.AsFloat;
+      ParamByName('cod_equipamento').AsString := wwDBEdit5.Text;
+      ParamByName('inicio_parada').AsDateTime := now;
+      ParamByName('cod_motivo').AsInteger := Motivo;
+      ParamByName('observacao').AsString := Observacao;
+      ParamByName('parado').AsString := 'S';
+      ParamByName('campo_oficina').AsString := Local;
+      ParamByName('ordemservico').AsString := OrdemServico;
+      ParamByName('automatico').AsString := 'N';
+      Execute;
+      Free;
+    end;
+    Self.Close;
+ end;
+end;
+
+procedure TF_GravarAlocacao.RzBitBtn2Click(Sender: TObject);
+begin
+
+
+   if wwDBEdit5.Text = '' then
+   begin
+     Application.MessageBox('Código do veículo não encontrado.','Erro',MB_OK+MB_ICONERROR);
+     Abort;
+   end;
+   if wwDBEdit7.Text = '' then
+   begin
+     Application.MessageBox('Código do tipo de carga não encontrado.','Erro',MB_OK+MB_ICONERROR);
+     Abort;
+   end;
+
+   //chamo função que atualiza o saldo e o excesso da frente para o critério vazao da frente
+   PR_Atualiza_Excesso_Eq_Frente.ParamByName('pcod_tipocarga').Value     := StrToFloat(wwDBEdit7.Text);
+   PR_Atualiza_Excesso_Eq_Frente.ParamByName('pcod_grupo').Value         := dm.QR_UnidadeCOD_GRUPO.Value;
+   PR_Atualiza_Excesso_Eq_Frente.ParamByName('pcod_regional').Value      := dm.QR_UnidadeCOD_REGIONAL.Value;
+   PR_Atualiza_Excesso_Eq_Frente.ParamByName('pcod_unidade').Value       := dm.QR_UnidadeCOD_UNIDADE.Value;
+   PR_Atualiza_Excesso_Eq_Frente.Execute;
+
+
+   SP_FN_SelecionaFazenda.ParamByName('pcod_grupo').AsFloat        := dm.QR_UnidadeCOD_GRUPO.AsFloat;
+   SP_FN_SelecionaFazenda.ParamByName('pcod_regional').AsFloat     := dm.QR_UnidadeCOD_REGIONAL.AsFloat;
+   SP_FN_SelecionaFazenda.ParamByName('pcod_unidade').AsFloat      := dm.QR_UnidadeCOD_UNIDADE.AsFloat;
+   SP_FN_SelecionaFazenda.ParamByName('pcod_equipamento').AsString := wwDBEdit5.Text;
+   SP_FN_SelecionaFazenda.ParamByName('pcod_safra').AsString       := dm.QR_SafrasCOD_SAFRA.AsString;
+   SP_FN_SelecionaFazenda.ParamByName('pcod_tipocarga').AsString   := wwDBEdit7.Text;
+   SP_FN_SelecionaFazenda.Execute;
+
+
+    v_frente  := Copy(SP_FN_SelecionaFazenda.ParamByName('result').AsString,1,Pos('|',SP_FN_SelecionaFazenda.ParamByName('result').AsString)-1);
+    v_fazenda := Copy(SP_FN_SelecionaFazenda.ParamByName('result').AsString,Pos('|',SP_FN_SelecionaFazenda.ParamByName('result').AsString)+1,length(SP_FN_SelecionaFazenda.ParamByName('result').AsString));
+
+    wwDBEdit1.Text := v_frente;
+    wwDBEdit3.Text := v_fazenda;
+    wwDBEdit1Exit(Self);
+    if v_frente <> fn_frente_patio then
+       wwDBEdit3Exit(Self);
+
+    if (v_frente <> '') and (v_fazenda <> '') then
+      RzBitBtn3.Enabled := True;
+
+    if v_frente = fn_frente_patio then
+    begin
+      with TOraQuery.Create(Self) do
+      begin
+        Session := DM.Sessao;
+        SQL.Text := 'SELECT NVL(A.TRAVA_ALOCACAO_PATIO,''N'') TRAVA ' +
+                    '  FROM PARAMETROS_LOGISTICA A                  ' +
+                    ' WHERE A.COD_GRUPO = :COD_GRUPO                ' +
+                    '   AND A.COD_REGIONAL = :COD_REGIONAL          ' +
+                    '   AND A.COD_UNIDADE = :COD_UNIDADE            ';
+        ParamByName('COD_GRUPO').AsFloat := DM.QR_UnidadeCOD_GRUPO.AsFloat;
+        ParamByName('COD_REGIONAL').AsFloat := DM.QR_UnidadeCOD_REGIONAL.AsFloat;
+        ParamByName('COD_UNIDADE').AsFloat := DM.QR_UnidadeCOD_UNIDADE.AsFloat;
+        Open;
+        if FieldByName('TRAVA').AsString = 'S' then
+        begin
+           wwDBEdit1.Enabled  := False;
+           wwDBEdit2.Enabled  := False;
+           wwDBEdit3.Enabled  := False;
+           wwDBEdit4.Enabled  := False;
+           b_pesquisa.Enabled := False;
+           SpeedButton1.Enabled := False;
+        end;
+      end;
+    end
+    else
+    begin
+      wwDBEdit1.Enabled  := True;
+      wwDBEdit2.Enabled  := True;
+      wwDBEdit3.Enabled  := True;
+      wwDBEdit4.Enabled  := True;
+      b_pesquisa.Enabled := True;
+      SpeedButton1.Enabled := True;
+    end;
+end;
+
+procedure TF_GravarAlocacao.SpeedButton1Click(Sender: TObject);
+Var valor:Variant;
+    SQL:String;
+begin
+//   desabilita_alocacao(Sender);
+//   showmessage('lembrar de habilitar recurso que desabilita o botao gravar');
+   If wwDBEdit1.Text <> '' then begin
+      SQL := '         SELECT b.descricao "Fazenda", a.cod_fazenda "Código"     ';
+      SQL := SQL + '     FROM fazendas_liberadas a, fazenda b ';
+      SQL := SQL + '    WHERE a.cod_fazenda = b.cod_fazenda                     ';
+      SQL := SQL + '      AND a.cod_frente = ' + wwDBEdit1.Text;
+      SQL := SQL + '      AND a.cod_safra = ' + DM.QR_SafrasCOD_SAFRA.AsString ;
+      SQL := SQL + '          &Macro                                            ';
+      SQL := SQL + ' ORDER BY b.descricao                                       ';
+      valor := F_BuscaAvancada.Buscar(sql,2,'Busca de Fazenda');;
+      If valor <> null then begin
+         wwDBEdit3.Text := VarToStr(valor);
+         wwDBEdit3Exit(Sender);
+      end;
+   End
+   Else Begin
+      Application.MessageBox('Favor selecionar uma frente primeiro !', 'Informação', MB_ICONINFORMATION + MB_OK);
+      wwDBEdit2.Clear;
+      wwDBEdit3.Clear;
+      wwDBEdit4.Clear;
+      wwDBEdit1.SetFocus;
+      Abort;
+   End;
+
+end;
+
+procedure TF_GravarAlocacao.TM_AlocacaoAutomaticaTimer(Sender: TObject);
+begin
+   alocarmanual(Self);
+end;
+
+procedure TF_GravarAlocacao.wwDBEdit1Enter(Sender: TObject);
+begin
+    old_frente := wwDBEdit1.Text;
+end;
+
+procedure TF_GravarAlocacao.wwDBEdit1Exit(Sender: TObject);
+begin
+   If wwDBEdit1.Text <> '' then
+   begin
+     if wwDBEdit1.Text = fn_frente_patio then
+     begin
+       wwDBEdit2.Text := 'PÁTIO';
+       wwDBEdit4.Text := 'PÁTIO';
+     end
+     else
+     begin
+      If old_frente <> wwDBEdit1.Text then begin
+         With TOraQuery.Create(Self) do
+         begin
+           Session := DM.Sessao;
+           Sql.Add(' SELECT DISTINCT b.descricao                                              ');
+           Sql.Add('            FROM fazendas_liberadas a, frente b         ');
+           Sql.Add('           WHERE a.cod_frente = b.cod_frente                              ');
+           Sql.Add('             AND a.cod_safra = ' + DM.QR_SafrasCOD_SAFRA.AsString  );
+           Sql.Add('             AND b.cod_safra = a.cod_safra                                ');
+           Sql.Add('             AND a.cod_frente = ' + wwDBEdit1.Text                         );
+           Open;
+           if not IsEmpty then
+           begin
+             wwDBEdit2.Text := FieldByName('descricao').asString;
+           end
+           else
+           begin
+              wwDBEdit2.Clear;
+              wwDBEdit3.Clear;
+              wwDBEdit4.Clear;
+           end;
+{
+           else
+             Application.MessageBox(pchar('Cod_frente: '+ (copy(TF_AlocacaoEquipamento(owner).v_fazenda_escolhida,1,2)) + ' Frente: '+ wwDBEdit2.Text),'Atenção', MB_ICONINFORMATION + MB_OK);
+ }
+           Free;
+         end;
+         if (wwDBEdit2.Text='') {and (F_Alocar.Active)} then
+         begin
+            Application.MessageBox('Frente Inválida !', 'Informação', MB_ICONINFORMATION + MB_OK);
+            wwDBEdit3.Clear;
+            wwDBEdit4.Clear;
+            wwDBEdit1.SetFocus;
+            //desabilita_alocacao(sender);
+            Abort;
+         end;
+//         wwDBEdit3.Clear;
+         wwDBEdit4.Clear;
+      End;
+     end;
+//  Application.MessageBox(pchar('Cod_frente: '+ (copy(TF_AlocacaoEquipamento(owner).v_fazenda_escolhida,1,2)) + ' Frente: '+ wwDBEdit2.Text),'Atenção', MB_ICONINFORMATION + MB_OK);
+   End
+   Else
+   begin
+      wwDBEdit2.Clear;
+      wwDBEdit3.Clear;
+      wwDBEdit4.Clear;
+   end;
+end;
+
+procedure TF_GravarAlocacao.wwDBEdit3Exit(Sender: TObject);
+Var fazenda : Variant;
+begin
+   If (wwDBEdit1.Text = '') and (wwDBEdit3.Text <> '') then begin
+      Application.MessageBox('Favor selecionar uma frente primeiro !', 'Informação', MB_ICONINFORMATION + MB_OK);
+      wwDBEdit2.Clear;
+      wwDBEdit3.Clear;
+      wwDBEdit4.Clear;
+      wwDBEdit1.SetFocus;
+      Abort;
+   End;
+
+   If (wwDBEdit3.Text <> '') then begin
+
+         With TOraQuery.Create(Self) do
+         begin
+           Session := DM.Sessao;
+           Sql.Add(' SELECT DISTINCT b.descricao                                              ');
+           Sql.Add('            FROM fazendas_liberadas a, fazenda b         ');
+           Sql.Add('           WHERE a.cod_fazenda = b.cod_fazenda                              ');
+           Sql.Add('             AND a.cod_safra = ' + DM.QR_SafrasCOD_SAFRA.AsString  );
+           Sql.Add('             AND b.cod_fazenda = ' + wwDBEdit3.Text);
+           Sql.Add('             AND a.cod_frente  = ' + wwDBEdit1.Text                         );
+           Open;
+           if not IsEmpty then
+           begin
+             wwDBEdit4.Text := FieldByName('descricao').asString;
+           end
+           else
+           begin
+              wwDBEdit3.Clear;
+              wwDBEdit4.Clear;
+           end;
+           Free;
+         end;
+
+      If (wwDBEdit4.Text='') {and (F_Alocar.Active)} then begin
+         Application.MessageBox('Fazenda inválida !', 'Informação', MB_ICONINFORMATION + MB_OK);
+         wwDBEdit4.Clear;
+         wwDBEdit3.SetFocus;
+         //desabilita_alocacao(sender);
+         Abort;
+      End;
+   End
+   Else Begin
+      wwDBEdit4.Clear;
+   End;
+end;
+
+procedure TF_GravarAlocacao.wwDBEdit5Exit(Sender: TObject);
+begin
+   If wwDBEdit5.Text <> '' then
+   begin
+      QR_PesquisaVeiculo.Close;
+//      QR_PesquisaVeiculo.ParamByName('cod_safra').AsFloat := Data_Modulo.QR_SafraCOD_SAFRA.AsFloat;
+      QR_PesquisaVeiculo.ParamByName('cod_equipamento').AsFloat := StrToFloat(wwDBEdit5.Text);
+      QR_PesquisaVeiculo.ParamByName('WordSearch').AsString := '%%';
+      QR_PesquisaVeiculo.Open;
+      if QR_PesquisaVeiculo.IsEmpty {and (F_Alocar.Active)} then
+      begin
+         Application.MessageBox('Veículo inválido', 'Informação', MB_ICONINFORMATION + MB_OK);
+         wwDBEdit6.Clear;
+         wwDBEdit5.SetFocus;
+//         desabilita_alocacao(sender);
+         Abort;
+      end;
+      wwDBEdit6.Text := QR_PesquisaVeiculoVeiculo.AsString;
+   end
+   else
+   begin
+      wwDBEdit6.Clear;
+   end;
+
+end;
+
+procedure TF_GravarAlocacao.wwDBEdit7Exit(Sender: TObject);
+begin
+  if Trim(wwDBEdit7.Text) = '' then
+  begin
+    wwDBEdit8.Text := '';
+  end
+  else
+  begin
+    if Trim(wwDBEdit1.Text) = '' then
+    begin
+      with TOraQuery.Create(Self) do
+      begin
+        Session := DM.Sessao;
+        Sql.Add(' SELECT DISTINCT b.descricao                                ');
+        Sql.Add('            FROM parametro_frente_faz_tipocarga a, ');
+        Sql.Add('                 tipo_carga b                       ');
+        Sql.Add('           WHERE a.cod_tipocarga = b.cod_tipocarga          ');
+        Sql.Add('             AND a.cod_safra = :cod_safra                   ');
+        Sql.Add('             AND a.cod_tipocarga = :cod_tipocarga           ');
+        ParamByName('cod_safra').asInteger := DM.QR_Safras.FieldByName('cod_safra').asInteger;
+        ParamByName('cod_tipocarga').asInteger := StrToInt(Trim(wwDBEdit7.Text));
+        Open;
+        if isEmpty then
+        begin
+          wwDBEdit8.Text := '';
+        end
+        else
+        begin
+          wwDBEdit8.Text := FieldByName('descricao').asString;
+        end;
+        Free;
+      end;
+    end
+    else
+    begin
+      with TOraQuery.Create(Self) do
+      begin
+        Session := DM.Sessao;
+        Sql.Add(' SELECT DISTINCT b.descricao                                ');
+        Sql.Add('            FROM parametro_frente_faz_tipocarga a, ');
+        Sql.Add('                 tipo_carga b                       ');
+        Sql.Add('           WHERE a.cod_tipocarga = b.cod_tipocarga          ');
+        Sql.Add('             AND a.cod_safra = :cod_safra                   ');
+        Sql.Add('             AND a.cod_frente = :cod_frente                 ');
+        Sql.Add('             AND a.cod_tipocarga = :cod_tipocarga           ');
+        ParamByName('cod_safra').asInteger := DM.QR_Safras.FieldByName('cod_safra').asInteger;
+        ParamByName('cod_tipocarga').asInteger := StrToInt(Trim(wwDBEdit7.Text));
+        ParamByName('cod_frente').asInteger := StrToInt(Trim(wwDBEdit1.Text));
+        Open;
+        if isEmpty then
+        begin
+          wwDBEdit8.Text := '';
+        end
+        else
+        begin
+          wwDBEdit8.Text := FieldByName('descricao').asString;
+        end;
+        Free;
+      end;
+    end;
+  end;
+
+end;
+
+end.

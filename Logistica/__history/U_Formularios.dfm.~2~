@@ -1,0 +1,129 @@
+inherited F_Formularios: TF_Formularios
+  Caption = 'F_Formularios'
+  ExplicitTop = 1
+  PixelsPerInch = 96
+  TextHeight = 13
+  inherited RzSplitterTemplate: TRzSplitter
+    UpperLeftControls = (
+      pnOpcoes
+      pnSeparador)
+    LowerRightControls = (
+      pnComponentes)
+    inherited pnOpcoes: TPanel
+      inherited RzBitBtnPesquisar: TRzBitBtn
+        OnClick = RzBitBtnPesquisarClick
+      end
+    end
+    inherited pnComponentes: TPanel
+      object cxGrid3: TcxGrid
+        Left = 0
+        Top = 0
+        Width = 656
+        Height = 398
+        Align = alClient
+        TabOrder = 0
+        ExplicitLeft = 6
+        ExplicitTop = 4
+        object cxGridDBTableView2: TcxGridDBTableView
+          OnFocusedItemChanged = cxGridDBTableView2FocusedItemChanged
+          DataController.DataSource = DS_Main
+          DataController.Summary.DefaultGroupSummaryItems = <>
+          DataController.Summary.FooterSummaryItems = <>
+          DataController.Summary.SummaryGroups = <>
+          OptionsBehavior.FocusCellOnTab = True
+          OptionsBehavior.FocusFirstCellOnNewRecord = True
+          OptionsBehavior.GoToNextCellOnEnter = True
+          OptionsData.Appending = True
+          OptionsView.NoDataToDisplayInfoText = 'N'#227'o h'#225' informa'#231#245'es'
+          OptionsView.GroupByBox = False
+          OptionsView.HeaderAutoHeight = True
+          Styles.StyleSheet = DM.GridTableViewStyleSheetUserFormat4
+          object cxGridDBTableView2COD_MENU: TcxGridDBColumn
+            Caption = 'C'#243'd. Menu'
+            DataBinding.FieldName = 'COD_MENU'
+            PropertiesClassName = 'TcxButtonEditProperties'
+            Properties.Buttons = <
+              item
+                Default = True
+                Kind = bkEllipsis
+              end>
+            Width = 56
+          end
+          object cxGridDBTableView2DESCMENU: TcxGridDBColumn
+            Caption = 'Nome Menu'
+            DataBinding.FieldName = 'DESCMENU'
+            Options.Editing = False
+            Options.Focusing = False
+            Width = 176
+          end
+          object cxGridDBTableView2COD_TELA: TcxGridDBColumn
+            Caption = 'C'#243'd. Formul'#225'rio'
+            DataBinding.FieldName = 'COD_TELA'
+            Width = 71
+          end
+          object cxGridDBTableView2NOME: TcxGridDBColumn
+            Caption = 'Nome Formul'#225'rio'
+            DataBinding.FieldName = 'NOME'
+            Width = 282
+          end
+        end
+        object cxGridLevel2: TcxGridLevel
+          GridView = cxGridDBTableView2
+        end
+      end
+    end
+  end
+  inherited QR_Main: TOraQuery
+    SQLInsert.Strings = (
+      'INSERT INTO TELAS'
+      '  (COD_MODULO, COD_TELA, NOME, COD_MENU)'
+      'VALUES'
+      '  (:COD_MODULO, :COD_TELA, :NOME, :COD_MENU)')
+    SQLDelete.Strings = (
+      'DELETE FROM TELAS'
+      'WHERE'
+      '  COD_MODULO = :Old_COD_MODULO AND COD_TELA = :Old_COD_TELA')
+    SQLUpdate.Strings = (
+      'UPDATE TELAS'
+      'SET'
+      
+        '  COD_MODULO = :COD_MODULO, COD_TELA = :COD_TELA, NOME = :NOME, ' +
+        'COD_MENU = :COD_MENU'
+      'WHERE'
+      '  COD_MODULO = :Old_COD_MODULO AND COD_TELA = :Old_COD_TELA')
+    SQL.Strings = (
+      'SELECT a.*,'
+      '       m.descricao descMenu'
+      '  FROM telas a,'
+      '       menu m'
+      ' WHERE a.cod_modulo = :cod_modulo'
+      '   AND m.cod_menu = a.cod_menu'
+      'ORDER BY a.cod_tela')
+    OnNewRecord = QR_MainNewRecord
+    Left = 160
+    ParamData = <
+      item
+        DataType = ftUnknown
+        Name = 'cod_modulo'
+      end>
+    object QR_MainCOD_MODULO: TFloatField
+      FieldName = 'COD_MODULO'
+      Required = True
+    end
+    object QR_MainCOD_TELA: TFloatField
+      FieldName = 'COD_TELA'
+      Required = True
+    end
+    object QR_MainNOME: TStringField
+      FieldName = 'NOME'
+      Size = 50
+    end
+    object QR_MainCOD_MENU: TFloatField
+      FieldName = 'COD_MENU'
+    end
+    object QR_MainDESCMENU: TStringField
+      FieldName = 'DESCMENU'
+      Size = 200
+    end
+  end
+end

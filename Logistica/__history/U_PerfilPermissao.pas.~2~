@@ -1,0 +1,25 @@
+unit U_PerfilPermissao;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, U_TemplateConsulta, RzButton,
+  Vcl.ExtCtrls, RzPanel, RzSplit;
+
+type
+  TF_PerfilPermissao = class(TF_TemplateConsulta)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  F_PerfilPermissao: TF_PerfilPermissao;
+
+implementation
+
+{$R *.dfm}
+
+end.
